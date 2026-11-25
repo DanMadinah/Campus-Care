@@ -9,3 +9,74 @@
     color: #132238;
   }
 }
+
+@keyframes ccFloatUp {
+  0% {
+    transform: translateY(108vh) rotate(-8deg) scale(0.92);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.16;
+  }
+  88% {
+    opacity: 0.14;
+  }
+  100% {
+    transform: translateY(-16vh) rotate(12deg) scale(1.06);
+    opacity: 0;
+  }
+}
+
+@keyframes ccDriftAcross {
+  0% {
+    transform: translateX(-12vw) translateY(0px) rotate(-6deg);
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.14;
+  }
+  50% {
+    transform: translateX(50vw) translateY(-18px) rotate(6deg);
+    opacity: 0.16;
+  }
+  88% {
+    opacity: 0.14;
+  }
+  100% {
+    transform: translateX(110vw) translateY(6px) rotate(-6deg);
+    opacity: 0;
+  }
+}
+
+@keyframes ccSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.cc-float {
+  position: absolute;
+  bottom: -90px;
+  opacity: 0;
+  animation: ccFloatUp linear infinite;
+}
+
+.cc-drift {
+  position: absolute;
+  left: 0;
+  opacity: 0;
+  animation: ccDriftAcross linear infinite;
+}
+
+.cc-spin {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ccSpin 7s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cc-float,
+  .cc-drift,
+  .cc-spin {
+    animation: none !important;
+  }
+}

@@ -28,6 +28,7 @@ import { HostelBlock, MaintenanceTicket, Priority, TicketStatus, UserRole } from
 import { ReportModal } from './components/ReportModal';
 import { TicketCard } from './components/TicketCard';
 import { AdminAnalytics } from './components/AdminAnalytics';
+import { MaintenanceBackdrop } from './components/MaintenanceBackdrop';
 
 const ROLE_META: Array<{ id: UserRole; label: string; icon: typeof GraduationCap }> = [
   { id: 'STUDENT', label: 'Student', icon: GraduationCap },
@@ -141,9 +142,11 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F6F5F1] text-[#132238]">
+    <div className="min-h-screen bg-[#F6F5F1] text-[#132238] relative overflow-x-hidden">
+      <MaintenanceBackdrop />
+
       {/* Architectural Deep-Navy Top Banner */}
-      <header className="bg-[#132238] text-white border-b-4 border-[#D95D39]">
+      <header className="relative z-10 bg-[#132238] text-white border-b-4 border-[#D95D39]">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-5 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-[#D95D39] flex items-center justify-center text-white shadow-sm">
@@ -204,7 +207,7 @@ export default function App() {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+      <main className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-6">
         {/* Role Context Strip */}
         <div className="rounded-xl bg-white border border-[#E5E3DC] px-4 py-3 text-xs text-[#475569] flex flex-wrap items-center justify-between gap-2">
           <span>
