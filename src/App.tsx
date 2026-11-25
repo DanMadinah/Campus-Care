@@ -22,7 +22,9 @@ import {
   loadTickets,
   rateTicket,
   reopenTicket,
-  saveTickets,
+  saveSingleTicketCloud,
+  saveTicketsLocal,
+  subscribeCloudTickets,
   ticketsToCsv,
   updateTicketStatus,
   upvoteTicket,
@@ -30,6 +32,7 @@ import {
 import { HostelBlock, MaintenanceTicket, Priority, TicketStatus, UserRole } from './types';
 import { ReportModal } from './components/ReportModal';
 import { TicketCard } from './components/TicketCard';
+import { SharedIssueCard } from './components/SharedIssueCard';
 import { AdminAnalytics } from './components/AdminAnalytics';
 import { MaintenanceBackdrop } from './components/MaintenanceBackdrop';
 import { LoginScreen, SessionUser } from './components/LoginScreen';
@@ -85,14 +88,24 @@ export default function App() {
     }
   });
 
+  // Wait for initial cloud fetch + attach real-time SSE listener (no blind full-list overwrite)
   useEffect(() => {
-    fetchCloudTickets().then((cloud) => {
-      if (cloud) setTickets(cloud);
+    if (!session || !isCloudSyncEnabled) return;
+    let active = true;
+    fetchCloudTickets(session.idToken).then((cloud) => {
+      if (active && cloud) setTickets(cloud);
     });
-  }, []);
+    const unsubscribe = subscribeCloudTickets((cloud) => {
+      if (active) setTickets(cloud);
+    }, session.idToken);
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, [session]);
 
   useEffect(() => {
-    saveTickets(tickets);
+    saveTicketsLocal(tickets);
   }, [tickets]);
 
   useEffect(() => {
@@ -156,6 +169,11 @@ export default function App() {
 
   const unreadCount = notifs.filter((n) => !n.read).length;
 
+  const syncTicket = (list: MaintenanceTicket[], id: string) => {
+    const changed = list.find((t) => t.id === id);
+    if (changed) saveSingleTicketCloud(changed, session?.idToken);
+  };
+
   const handleCreate = (input: {
     title: string;
     description: string;
@@ -175,18 +193,27 @@ export default function App() {
     });
     const createdId = next[0].id;
     setTickets(next);
+    syncTicket(next, createdId);
     setStudentView('MINE');
     pushNotif(createdId, `New report ${createdId} submitted for Room ${input.room.trim().toUpperCase()}.`);
     notify(`Report ${createdId} submitted! Save ${createdId} to track progress.`);
   };
 
   const handleUpvote = (id: string) => {
-    setTickets((prev) => upvoteTicket(prev, id));
-    notify(`Confirmed ${id} affects your room/block`);
+    setTickets((prev) => {
+      const next = upvoteTicket(prev, id);
+      syncTicket(next, id);
+      return next;
+    });
+    notify(`Confirmed ${id} affects your block`);
   };
 
   const handleAssign = (id: string, technician: string) => {
-    setTickets((prev) => assignTechnician(prev, id, technician));
+    setTickets((prev) => {
+      const next = assignTechnician(prev, id, technician);
+      syncTicket(next, id);
+      return next;
+    });
     pushNotif(id, `Hostel Warden assigned ${id} to ${technician}.`);
     notify(`Assigned ${id} to ${technician}`);
   };
@@ -194,18 +221,30 @@ export default function App() {
   const handleUpdateStatus = (id: string, status: TicketStatus, note: string) => {
     const target = tickets.find((t) => t.id === id);
     const actor = target?.assignedTo ?? 'Maintenance Staff';
-    setTickets((prev) => updateTicketStatus(prev, id, status, note, actor));
+    setTickets((prev) => {
+      const next = updateTicketStatus(prev, id, status, note, actor);
+      syncTicket(next, id);
+      return next;
+    });
     pushNotif(id, `${actor} marked ${id} as ${status}${note.trim() ? `: ${note.trim()}` : '.'}`);
     notify(`Updated ${id} to ${status}`);
   };
 
   const handleRate = (id: string, rating: number, feedback: string) => {
-    setTickets((prev) => rateTicket(prev, id, rating, feedback));
+    setTickets((prev) => {
+      const next = rateTicket(prev, id, rating, feedback);
+      syncTicket(next, id);
+      return next;
+    });
     notify(`Thanks for rating ${id} (${rating}/5)`);
   };
 
   const handleReopen = (id: string, reason: string) => {
-    setTickets((prev) => reopenTicket(prev, id, reason));
+    setTickets((prev) => {
+      const next = reopenTicket(prev, id, reason);
+      syncTicket(next, id);
+      return next;
+    });
     notify(`Reopened ${id} for follow-up`);
   };
 
@@ -510,20 +549,23 @@ export default function App() {
 
         {/* Ticket Feed */}
         <div className="space-y-3.5">
-          {filteredTickets.map((ticket) => (
-            <TicketCard
-              key={ticket.id}
-              ticket={ticket}
-              role={role}
-              anonymized={role === 'STUDENT' && studentView === 'SHARED'}
-              onUpvote={handleUpvote}
-              onAssign={handleAssign}
-              onUpdateStatus={handleUpdateStatus}
-              onRate={handleRate}
-              onReopen={handleReopen}
-              onCopyId={handleCopyId}
-            />
-          ))}
+          {filteredTickets.map((ticket) =>
+            role === 'STUDENT' && studentView === 'SHARED' ? (
+              <SharedIssueCard key={ticket.id} ticket={ticket} onUpvote={handleUpvote} />
+            ) : (
+              <TicketCard
+                key={ticket.id}
+                ticket={ticket}
+                role={role}
+                onUpvote={handleUpvote}
+                onAssign={handleAssign}
+                onUpdateStatus={handleUpdateStatus}
+                onRate={handleRate}
+                onReopen={handleReopen}
+                onCopyId={handleCopyId}
+              />
+            )
+          )}
 
           {filteredTickets.length === 0 && (
             <div className="rounded-2xl bg-white border border-dashed border-[#CFCBC0] p-10 text-center text-sm text-[#64748B]">

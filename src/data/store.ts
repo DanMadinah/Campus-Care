@@ -155,32 +155,83 @@ export function loadTickets(): MaintenanceTicket[] {
   return createInitialTickets();
 }
 
-export function saveTickets(tickets: MaintenanceTicket[]): void {
+export function saveTicketsLocal(tickets: MaintenanceTicket[]): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(tickets));
   } catch {
     // ignore quota errors
   }
-  if (isCloudSyncEnabled) {
-    fetch(`${CLOUD_URL}/campuscare/tickets.json`, {
+}
+
+function authQuery(idToken?: string): string {
+  return idToken ? `?auth=${encodeURIComponent(idToken)}` : '';
+}
+
+function normalizeTicketMap(raw: unknown): MaintenanceTicket[] {
+  if (!raw) return [];
+  const arr = Array.isArray(raw) ? raw : Object.values(raw as Record<string, MaintenanceTicket>);
+  return arr
+    .filter((t): t is MaintenanceTicket => Boolean(t && typeof t === 'object' && 'id' in t))
+    .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+}
+
+/**
+ * Writes a single ticket record to /campuscare/tickets/<id>.json
+ * so concurrent updates to different tickets never overwrite each other.
+ */
+export async function saveSingleTicketCloud(ticket: MaintenanceTicket, idToken?: string): Promise<void> {
+  if (!isCloudSyncEnabled) return;
+  try {
+    await fetch(`${CLOUD_URL}/campuscare/tickets/${encodeURIComponent(ticket.id)}.json${authQuery(idToken)}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(tickets),
-    }).catch(() => {});
+      body: JSON.stringify(ticket),
+    });
+  } catch {
+    // offline fallback stays in localStorage
   }
 }
 
-export async function fetchCloudTickets(): Promise<MaintenanceTicket[] | null> {
+export async function fetchCloudTickets(idToken?: string): Promise<MaintenanceTicket[] | null> {
   if (!isCloudSyncEnabled) return null;
   try {
-    const res = await fetch(`${CLOUD_URL}/campuscare/tickets.json`, { cache: 'no-store' });
+    const res = await fetch(`${CLOUD_URL}/campuscare/tickets.json${authQuery(idToken)}`, { cache: 'no-store' });
     if (!res.ok) return null;
     const data = await res.json();
-    if (Array.isArray(data) && data.length > 0) return data as MaintenanceTicket[];
+    const list = normalizeTicketMap(data);
+    return list.length > 0 ? list : null;
   } catch {
-    // fallback to localStorage
+    return null;
   }
-  return null;
+}
+
+/**
+ * Real-time subscription using Firebase REST Server-Sent Events (EventSource).
+ * Returns an unsubscribe cleanup function.
+ */
+export function subscribeCloudTickets(
+  onUpdate: (tickets: MaintenanceTicket[]) => void,
+  idToken?: string
+): () => void {
+  if (!isCloudSyncEnabled || typeof EventSource === 'undefined') {
+    return () => {};
+  }
+  const url = `${CLOUD_URL}/campuscare/tickets.json${authQuery(idToken)}`;
+  const es = new EventSource(url);
+
+  const handleEvent = () => {
+    fetchCloudTickets(idToken).then((list) => {
+      if (list) onUpdate(list);
+    });
+  };
+
+  es.addEventListener('put', handleEvent);
+  es.addEventListener('patch', handleEvent);
+  es.onerror = () => {
+    // browser automatically retries SSE
+  };
+
+  return () => es.close();
 }
 
 export function nextTicketId(tickets: MaintenanceTicket[]): string {

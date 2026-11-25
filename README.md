@@ -8,33 +8,44 @@ Anyone who has lived in a university hostel knows how frustrating maintenance ca
 
 I built **Campus Care** for the love of students and campus life. The goal was to make a simple, clear place where students can report room or block problems in seconds, follow every step until it is fixed, and give hostel wardens and technicians an organized way to get the work done faster.
 
-## How it works
+## Demo Mode vs Cloud Mode (Important)
 
-### 1. Email Login (Separate Access)
-- **Students** sign in with their name and email address to report issues and track repairs.
-- **Wardens** sign in with their email and staff access code (`warden123` for demo testing).
-- **Technicians** sign in with their email and staff access code (`tech123` for demo testing).
+By default, the deployed site runs in **Demo Mode (Prototype)** so anyone can test all three roles immediately without setting up a database:
+- **Demo storage:** Tickets are saved in your browser's `localStorage` (not synced across different devices unless Firebase is configured).
+- **Demo login:** Client-side prototype login. Students enter their name, email, and matric number. Staff roles use demo codes:
+  - Warden demo code: `warden123`
+  - Technician demo code: `tech123`
+- **Cloud sync is NOT active by default** just because the code supports it. To enable real multi-device sync and Firebase Authentication, configure the environment variables below.
 
-### 2. Student Portal
-- **Report any problem**: Pick from common hostel issues (Lights & Electrical, Plumbing & Taps, Fan & AC, Internet & Wi-Fi, Furniture & Doors) or choose **Other** to type any issue not on the list (like a roof leak, broken washing machine, or pest issue).
-- **Real details that help staff**: Add your block, room number, preferred technician visit time, phone/WhatsApp number, and an optional photo of the problem.
-- **Track progress**: Every report gets a reference code (like `CC-105`) with a copy button, a 4-step progress bar (`Submitted -> Assigned -> In Progress -> Resolved`), and a full update history.
-- **Shared block issues**: Click **Same issue** on an existing report so maintenance knows how many students are affected without flooding the system with duplicates.
-- **Rate or reopen**: Once a job is marked Resolved, students can rate the repair (1 to 5 stars), leave feedback, or reopen the ticket if the problem comes back.
+## Enabling Optional Firebase Auth & Real-Time Cloud Sync
 
-### 3. Warden / Admin View
-- See live counts of open, urgent, in-progress, and resolved complaints.
-- Check which hostel blocks (`Block A` to `Block D`) and issue categories have the most reports.
-- Assign incoming tickets to the right technician and download the full maintenance log as a CSV file.
+1. Create a Firebase project, enable **Email/Password Authentication**, and create a **Realtime Database**.
+2. Apply the backend role rules from [docs/FIREBASE_RULES.json](docs/FIREBASE_RULES.json) in your Firebase Realtime Database Rules tab, and set staff roles under `/campuscare/roles/<uid>` (`"WARDEN"` or `"TECHNICIAN"`).
+3. Copy `.env.example` to `.env` (or add these in Vercel **Settings -> Environment Variables**):
+   ```env
+   VITE_FIREBASE_DB_URL=https://your-project-default-rtdb.firebasedatabase.app
+   VITE_FIREBASE_API_KEY=your-firebase-web-api-key
+   ```
+4. When configured:
+   - Login uses real **Firebase Email/Password Authentication** and checks backend-assigned roles.
+   - Each ticket is written individually to `/campuscare/tickets/<id>.json` (avoiding full-list overwrites).
+   - Live updates stream across devices via Firebase Server-Sent Events (`EventSource`).
 
-### 4. Technician View
-- View assigned jobs with room numbers, student contact info, preferred visit times, and attached photos.
-- Update ticket status to **In Progress** or **Resolved** and write repair notes that show up right away for the student.
+## Features
 
-### 5. Extra Touches
-- **Notifications bell**: Alerts users whenever a ticket is submitted, assigned, or updated, with a click-to-jump shortcut.
-- **Light and Dark mode**: Switch themes anytime from the top bar.
-- **Search and filters**: Filter by block, category, status, or search by room, student name, or ticket ID.
+### Student Portal
+- **Privacy first**: **My Reports** shows only complaints submitted under the signed-in student's email. **Shared Block Issues** uses a separate anonymised card (`SharedIssueCard.tsx`) that hides other students' names, matric numbers, room numbers, phone numbers, photos, and private history while allowing students to confirm shared block issues ("Same issue").
+- **Report any problem**: Choose from Lights & Electrical, Plumbing & Taps, Fan & AC, Internet & Wi-Fi, Furniture & Doors, or select **Other** to type any custom issue.
+- **Photo validation**: Accepts JPG, PNG, or WebP images up to 2 MB and compresses them before saving.
+- **Track, rate, or reopen**: 4-step progress bar (`Submitted -> Assigned -> In Progress -> Resolved`), reference ID copy button, 1 to 5 star repair rating, and a Reopen option if the fix did not hold.
+
+### Warden / Admin View
+- Live counts of open, urgent, in-progress, and resolved tickets, plus breakdowns by hostel block (`Block A` to `Block D`) and category.
+- Assign technicians, reset sample records (Warden-only), and export CSV logs with RFC-4180 escaping and spreadsheet formula-injection protection.
+
+### Technician View
+- View assigned jobs with room details, contact info, preferred visit time, and photos.
+- Update job status (`In Progress` / `Resolved`) and post repair notes that notify students.
 
 ## Tech stack
 
@@ -42,24 +53,29 @@ I built **Campus Care** for the love of students and campus life. The goal was t
 - Vite & Tailwind CSS
 - Lucide Icons
 - Vitest & GitHub Actions CI
-- Browser `localStorage` for saving tickets locally (ready to connect to a backend database later)
+- Optional Firebase Authentication + Realtime Database (REST + SSE)
 
 ## Folder structure
 
 ```text
 campus-care/
-├── .github/workflows/ci.yml        # Runs typecheck, unit tests, and build
+├── .github/workflows/ci.yml        # Typecheck, Vitest unit tests, and Vite build
+├── docs/FIREBASE_RULES.json        # Example backend role-enforcement rules for Firebase
 ├── src/
 │   ├── components/
-│   │   ├── LoginScreen.tsx         # Email login for Students, Wardens, and Technicians
-│   │   ├── ReportModal.tsx         # Issue form with custom "Other" input and photo preview
-│   │   ├── TicketCard.tsx          # Progress bar, history, rating, reopen, and staff actions
-│   │   ├── AdminAnalytics.tsx      # Block and category breakdown charts
-│   │   └── MaintenanceBackdrop.tsx # Animated hostel maintenance background
-│   ├── data/store.ts               # Ticket logic, counts, ratings, and CSV export
-│   ├── types/index.ts              # TypeScript types
-│   └── App.tsx                     # Main app, notifications bell, and filters
-├── tests/store.test.ts             # Unit tests for the maintenance workflow
+│   │   ├── LoginScreen.tsx         # Demo login or real Firebase Email/Password Auth
+│   │   ├── ReportModal.tsx         # Issue form, custom "Other" input, photo validation
+│   │   ├── TicketCard.tsx          # Full ticket card for owner, warden, and technician
+│   │   ├── SharedIssueCard.tsx     # Dedicated anonymised card for shared block issues
+│   │   ├── AdminAnalytics.tsx      # Block and category breakdown
+│   │   └── MaintenanceBackdrop.tsx # Animated maintenance background
+│   ├── data/
+│   │   ├── firebaseAuth.ts         # Firebase Auth REST client + backend role lookup
+│   │   └── store.ts                # Per-ticket cloud sync, SSE listener, safe CSV export
+│   ├── types/index.ts              # TypeScript interfaces
+│   └── App.tsx                     # Main app, privacy tabs, notifications, Light/Dark mode
+├── tests/store.test.ts             # Unit tests (lifecycle + CSV formula-injection tests)
+├── .env.example                    # Optional Firebase env template
 ├── vercel.json                     # Vercel deployment config
 └── LICENSE
 ```
