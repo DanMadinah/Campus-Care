@@ -1,5 +1,7 @@
 # Campus Care
 
+Live site: [campus-care-three-blond.vercel.app](https://campus-care-three-blond.vercel.app)
+
 A hostel maintenance tracker built with React, TypeScript, Tailwind CSS, and Vite.
 
 Students can report faulty lights, leaking taps, broken fans, Wi-Fi issues, or furniture damage. Wardens can assign staff and check which blocks have the most open issues, and technicians can update repair progress with notes.
