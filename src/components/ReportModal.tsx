@@ -74,8 +74,8 @@ export function ReportModal({ onClose, onSubmit }: ReportModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#132238]/60 backdrop-blur-[2px] flex items-center justify-center p-4 overflow-y-auto">
-      <div className="w-full max-w-xl bg-white border border-[#E5E3DC] rounded-2xl shadow-2xl overflow-hidden my-6">
+    <div className="fixed inset-0 z-50 bg-[#132238]/65 backdrop-blur-[2px] flex items-center justify-center p-4 overflow-y-auto">
+      <div className="w-full max-w-xl bg-white dark:bg-[#162133] border border-[#E5E3DC] dark:border-[#26354D] rounded-2xl shadow-2xl overflow-hidden my-6">
         <div className="flex items-center justify-between px-6 py-4 bg-[#132238] text-white">
           <div>
             <h3 className="font-bold text-base">Submit Maintenance Request</h3>

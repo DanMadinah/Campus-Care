@@ -9,21 +9,21 @@ export function AdminAnalytics({ byBlock, byCategory, total }: AdminAnalyticsPro
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div className="rounded-2xl bg-white border border-[#E5E3DC] p-5 space-y-3 shadow-[0_2px_10px_rgba(19,34,56,0.03)]">
-        <h3 className="text-sm font-bold text-[#132238]">Reports by Hostel Block</h3>
+      <div className="rounded-2xl bg-white/95 dark:bg-[#162133]/95 border border-[#E5E3DC] dark:border-[#26354D] p-5 space-y-3 shadow-[0_2px_10px_rgba(19,34,56,0.03)]">
+        <h3 className="text-sm font-bold text-[#132238] dark:text-white">Reports by Hostel Block</h3>
         <div className="space-y-3">
           {byBlock.map((row) => {
             const pct = Math.round((row.count / safeTotal) * 100);
             return (
               <div key={row.block} className="space-y-1">
-                <div className="flex justify-between text-xs text-[#132238] font-medium">
+                <div className="flex justify-between text-xs text-[#132238] dark:text-slate-200 font-medium">
                   <span>{row.block}</span>
-                  <span className="text-[#64748B]">
+                  <span className="text-[#64748B] dark:text-slate-400">
                     {row.count} total ({row.open} open)
                   </span>
                 </div>
-                <div className="h-2 rounded-full bg-[#ECEAE2] overflow-hidden">
-                  <div className="h-full bg-[#1B6B5A] rounded-full" style={{ width: `${pct}%` }} />
+                <div className="h-2 rounded-full bg-[#ECEAE2] dark:bg-[#0E1624] overflow-hidden">
+                  <div className="h-full bg-[#1B6B5A] dark:bg-emerald-400 rounded-full" style={{ width: `${pct}%` }} />
                 </div>
               </div>
             );
@@ -31,20 +31,20 @@ export function AdminAnalytics({ byBlock, byCategory, total }: AdminAnalyticsPro
         </div>
       </div>
 
-      <div className="rounded-2xl bg-white border border-[#E5E3DC] p-5 space-y-3 shadow-[0_2px_10px_rgba(19,34,56,0.03)]">
-        <h3 className="text-sm font-bold text-[#132238]">Reports by Category</h3>
+      <div className="rounded-2xl bg-white/95 dark:bg-[#162133]/95 border border-[#E5E3DC] dark:border-[#26354D] p-5 space-y-3 shadow-[0_2px_10px_rgba(19,34,56,0.03)]">
+        <h3 className="text-sm font-bold text-[#132238] dark:text-white">Reports by Category</h3>
         <div className="space-y-3">
           {byCategory.map((row) => {
             const pct = Math.round((row.count / safeTotal) * 100);
             return (
               <div key={row.category} className="space-y-1">
-                <div className="flex justify-between text-xs text-[#132238] font-medium">
+                <div className="flex justify-between text-xs text-[#132238] dark:text-slate-200 font-medium">
                   <span>{row.category}</span>
-                  <span className="text-[#64748B]">
+                  <span className="text-[#64748B] dark:text-slate-400">
                     {row.count} ({pct}%)
                   </span>
                 </div>
-                <div className="h-2 rounded-full bg-[#ECEAE2] overflow-hidden">
+                <div className="h-2 rounded-full bg-[#ECEAE2] dark:bg-[#0E1624] overflow-hidden">
                   <div className="h-full bg-[#D95D39] rounded-full" style={{ width: `${pct}%` }} />
                 </div>
               </div>

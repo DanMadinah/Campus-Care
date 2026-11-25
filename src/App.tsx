@@ -8,6 +8,8 @@ import {
   UserCheck,
   Wrench,
   GraduationCap,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import {
   BLOCKS,
@@ -45,10 +47,26 @@ export default function App() {
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [showReportModal, setShowReportModal] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [darkMode, setDarkMode] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('campuscare_theme') === 'dark';
+    } catch {
+      return false;
+    }
+  });
 
   useEffect(() => {
     saveTickets(tickets);
   }, [tickets]);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', darkMode);
+    try {
+      localStorage.setItem('campuscare_theme', darkMode ? 'dark' : 'light');
+    } catch {
+      // ignore
+    }
+  }, [darkMode]);
 
   const notify = (msg: string) => {
     setToast(msg);
@@ -142,11 +160,11 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F6F5F1] text-[#132238] relative overflow-x-hidden">
+    <div className="min-h-screen bg-[#F6F5F1] dark:bg-[#0E1624] text-[#132238] dark:text-slate-100 relative overflow-x-hidden transition-colors">
       <MaintenanceBackdrop />
 
       {/* Architectural Deep-Navy Top Banner */}
-      <header className="relative z-10 bg-[#132238] text-white border-b-4 border-[#D95D39]">
+      <header className="relative z-10 bg-[#132238] dark:bg-[#0A101B] text-white border-b-4 border-[#D95D39]">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-5 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-[#D95D39] flex items-center justify-center text-white shadow-sm">
@@ -197,6 +215,15 @@ export default function App() {
             )}
 
             <button
+              onClick={() => setDarkMode((d) => !d)}
+              title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+              className="inline-flex items-center gap-1.5 px-2.5 py-2 rounded-xl bg-[#1D314F] text-slate-200 hover:text-white border border-white/10 text-xs font-semibold"
+            >
+              {darkMode ? <Sun className="w-4 h-4 text-amber-300" /> : <Moon className="w-4 h-4 text-sky-300" />}
+              <span className="hidden sm:inline">{darkMode ? 'Light' : 'Dark'}</span>
+            </button>
+
+            <button
               onClick={handleReset}
               title="Reset sample records"
               className="p-2 rounded-xl bg-[#1D314F] text-slate-300 hover:text-white border border-white/10"
@@ -209,44 +236,44 @@ export default function App() {
 
       <main className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-6">
         {/* Role Context Strip */}
-        <div className="rounded-xl bg-white border border-[#E5E3DC] px-4 py-3 text-xs text-[#475569] flex flex-wrap items-center justify-between gap-2">
+        <div className="rounded-xl bg-white/95 dark:bg-[#162133]/95 border border-[#E5E3DC] dark:border-[#26354D] px-4 py-3 text-xs text-[#475569] dark:text-slate-300 flex flex-wrap items-center justify-between gap-2">
           <span>
             {role === 'STUDENT' && (
               <>
-                <b className="text-[#132238]">Student Portal:</b> Report faulty lights, leaking taps, broken fans, Wi-Fi issues, or write your own custom issue under <b>Other</b>.
+                <b className="text-[#132238] dark:text-white">Student Portal:</b> Report faulty lights, leaking taps, broken fans, Wi-Fi issues, or write your own custom issue under <b>Other</b>.
               </>
             )}
             {role === 'WARDEN' && (
               <>
-                <b className="text-[#132238]">Warden Office:</b> Monitor open repairs across Blocks A–D, assign technicians, and download CSV logs.
+                <b className="text-[#132238] dark:text-white">Warden Office:</b> Monitor open repairs across Blocks A–D, assign technicians, and download CSV logs.
               </>
             )}
             {role === 'TECHNICIAN' && (
               <>
-                <b className="text-[#132238]">Maintenance Staff:</b> Update job progress and post repair notes directly to the student&apos;s ticket.
+                <b className="text-[#132238] dark:text-white">Maintenance Staff:</b> Update job progress and post repair notes directly to the student&apos;s ticket.
               </>
             )}
           </span>
-          <span className="text-[#94A3B8]">Saved locally in your browser</span>
+          <span className="text-[#94A3B8] dark:text-slate-500">Saved locally in your browser</span>
         </div>
 
         {/* Stat Tiles */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
-          <div className="rounded-2xl bg-white border border-[#E5E3DC] p-4 border-l-4 border-l-[#132238]">
-            <div className="text-xs font-medium text-[#64748B]">Open Reports</div>
-            <div className="text-2xl font-extrabold text-[#132238] mt-1">{metrics.open}</div>
+          <div className="rounded-2xl bg-white/95 dark:bg-[#162133]/95 border border-[#E5E3DC] dark:border-[#26354D] p-4 border-l-4 border-l-[#132238] dark:border-l-sky-400">
+            <div className="text-xs font-medium text-[#64748B] dark:text-slate-400">Open Reports</div>
+            <div className="text-2xl font-extrabold text-[#132238] dark:text-white mt-1">{metrics.open}</div>
           </div>
-          <div className="rounded-2xl bg-white border border-[#E5E3DC] p-4 border-l-4 border-l-rose-600">
-            <div className="text-xs font-medium text-[#64748B]">Urgent Open</div>
-            <div className="text-2xl font-extrabold text-rose-700 mt-1">{metrics.urgent}</div>
+          <div className="rounded-2xl bg-white/95 dark:bg-[#162133]/95 border border-[#E5E3DC] dark:border-[#26354D] p-4 border-l-4 border-l-rose-600">
+            <div className="text-xs font-medium text-[#64748B] dark:text-slate-400">Urgent Open</div>
+            <div className="text-2xl font-extrabold text-rose-700 dark:text-rose-400 mt-1">{metrics.urgent}</div>
           </div>
-          <div className="rounded-2xl bg-white border border-[#E5E3DC] p-4 border-l-4 border-l-[#D95D39]">
-            <div className="text-xs font-medium text-[#64748B]">In Progress</div>
-            <div className="text-2xl font-extrabold text-[#D95D39] mt-1">{metrics.inProgress}</div>
+          <div className="rounded-2xl bg-white/95 dark:bg-[#162133]/95 border border-[#E5E3DC] dark:border-[#26354D] p-4 border-l-4 border-l-[#D95D39]">
+            <div className="text-xs font-medium text-[#64748B] dark:text-slate-400">In Progress</div>
+            <div className="text-2xl font-extrabold text-[#D95D39] dark:text-[#F07A57] mt-1">{metrics.inProgress}</div>
           </div>
-          <div className="rounded-2xl bg-white border border-[#E5E3DC] p-4 border-l-4 border-l-[#1B6B5A]">
-            <div className="text-xs font-medium text-[#64748B]">Resolved</div>
-            <div className="text-2xl font-extrabold text-[#1B6B5A] mt-1">{metrics.resolved}</div>
+          <div className="rounded-2xl bg-white/95 dark:bg-[#162133]/95 border border-[#E5E3DC] dark:border-[#26354D] p-4 border-l-4 border-l-[#1B6B5A] dark:border-l-emerald-400">
+            <div className="text-xs font-medium text-[#64748B] dark:text-slate-400">Resolved</div>
+            <div className="text-2xl font-extrabold text-[#1B6B5A] dark:text-emerald-400 mt-1">{metrics.resolved}</div>
           </div>
         </div>
 
@@ -263,14 +290,14 @@ export default function App() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search room, ticket ID (e.g. CC-104), issue, or student..."
-              className="w-full bg-white border border-[#D8D5CC] rounded-xl pl-10 pr-3 py-2 text-sm text-[#132238] focus:outline-none focus:border-[#D95D39]"
+              className="w-full bg-white/95 dark:bg-[#162133] border border-[#D8D5CC] dark:border-[#26354D] rounded-xl pl-10 pr-3 py-2 text-sm text-[#132238] dark:text-white focus:outline-none focus:border-[#D95D39]"
             />
           </div>
 
           <select
             value={blockFilter}
             onChange={(e) => setBlockFilter(e.target.value)}
-            className="bg-white border border-[#D8D5CC] rounded-xl px-3 py-2 text-xs font-semibold text-[#132238]"
+            className="bg-white/95 dark:bg-[#162133] border border-[#D8D5CC] dark:border-[#26354D] rounded-xl px-3 py-2 text-xs font-semibold text-[#132238] dark:text-slate-100"
           >
             <option value="ALL">All Blocks</option>
             {BLOCKS.map((b) => (
@@ -283,7 +310,7 @@ export default function App() {
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="bg-white border border-[#D8D5CC] rounded-xl px-3 py-2 text-xs font-semibold text-[#132238]"
+            className="bg-white/95 dark:bg-[#162133] border border-[#D8D5CC] dark:border-[#26354D] rounded-xl px-3 py-2 text-xs font-semibold text-[#132238] dark:text-slate-100"
           >
             <option value="ALL">All Categories</option>
             {allCategories.map((c) => (
@@ -296,7 +323,7 @@ export default function App() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="bg-white border border-[#D8D5CC] rounded-xl px-3 py-2 text-xs font-semibold text-[#132238]"
+            className="bg-white/95 dark:bg-[#162133] border border-[#D8D5CC] dark:border-[#26354D] rounded-xl px-3 py-2 text-xs font-semibold text-[#132238] dark:text-slate-100"
           >
             <option value="ALL">All Statuses</option>
             {STATUS_ORDER.map((s) => (

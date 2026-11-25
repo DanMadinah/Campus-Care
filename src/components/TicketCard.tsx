@@ -63,7 +63,7 @@ export function TicketCard({
   const stepIndex = STATUS_ORDER.indexOf(ticket.status);
 
   return (
-    <article className="rounded-2xl bg-white border border-[#E5E3DC] shadow-[0_2px_10px_rgba(19,34,56,0.04)] hover:border-[#CFCBC0] transition p-5 space-y-4">
+    <article className="rounded-2xl bg-white/95 dark:bg-[#162133]/95 border border-[#E5E3DC] dark:border-[#26354D] shadow-[0_2px_10px_rgba(19,34,56,0.04)] hover:border-[#CFCBC0] dark:hover:border-slate-500 transition p-5 space-y-4">
       {/* Header Row */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1.5">
@@ -71,7 +71,7 @@ export function TicketCard({
             <button
               onClick={() => onCopyId(ticket.id)}
               title="Copy reference number"
-              className="inline-flex items-center gap-1 text-xs font-bold font-mono text-[#132238] bg-[#F3F1EA] hover:bg-[#E8E4D8] px-2 py-0.5 rounded-md"
+              className="inline-flex items-center gap-1 text-xs font-bold font-mono text-[#132238] dark:text-slate-100 bg-[#F3F1EA] dark:bg-[#0E1624] hover:bg-[#E8E4D8] dark:hover:bg-slate-800 px-2 py-0.5 rounded-md"
             >
               {ticket.id} <Copy className="w-3 h-3 text-[#64748B]" />
             </button>
@@ -81,19 +81,19 @@ export function TicketCard({
             <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full border ${PRIORITY_BADGE[ticket.priority]}`}>
               {ticket.priority}
             </span>
-            <span className="text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-[#FDF6F0] text-[#9A3412] border border-[#F5D0BE]">
+            <span className="text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-[#FDF6F0] dark:bg-[#2B1D17] text-[#9A3412] dark:text-[#F4A286] border border-[#F5D0BE] dark:border-[#5E3021]">
               {ticket.category}
             </span>
           </div>
-          <h3 className="text-base font-bold text-[#132238]">{ticket.title}</h3>
-          <p className="text-sm text-[#475569] leading-relaxed">{ticket.description}</p>
+          <h3 className="text-base font-bold text-[#132238] dark:text-white">{ticket.title}</h3>
+          <p className="text-sm text-[#475569] dark:text-slate-300 leading-relaxed">{ticket.description}</p>
         </div>
 
         {role === 'STUDENT' && ticket.status !== 'Resolved' && (
           <button
             onClick={() => onUpvote(ticket.id)}
             title="Confirm this issue also affects you"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#FAF9F6] border border-[#D8D5CC] hover:border-[#D95D39] text-xs font-semibold text-[#132238]"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#FAF9F6] dark:bg-[#0E1624] border border-[#D8D5CC] dark:border-[#26354D] hover:border-[#D95D39] text-xs font-semibold text-[#132238] dark:text-slate-100"
           >
             <ThumbsUp className="w-3.5 h-3.5 text-[#D95D39]" />
             Same issue ({ticket.upvotes})
@@ -124,8 +124,8 @@ export function TicketCard({
                     : 'bg-[#ECEAE2]'
                 }`}
               />
-              <div className={`text-[11px] flex items-center gap-1 ${done ? 'text-[#132238] font-semibold' : 'text-[#94A3B8]'}`}>
-                {done && idx === 3 && <CheckCircle2 className="w-3.5 h-3.5 text-[#1B6B5A]" />}
+              <div className={`text-[11px] flex items-center gap-1 ${done ? 'text-[#132238] dark:text-slate-100 font-semibold' : 'text-[#94A3B8] dark:text-slate-500'}`}>
+                {done && idx === 3 && <CheckCircle2 className="w-3.5 h-3.5 text-[#1B6B5A] dark:text-emerald-400" />}
                 {step}
               </div>
             </div>
@@ -134,14 +134,14 @@ export function TicketCard({
       </div>
 
       {/* Metadata Row */}
-      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-[#64748B] pt-3 border-t border-[#F0EFEA]">
+      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-[#64748B] dark:text-slate-400 pt-3 border-t border-[#F0EFEA] dark:border-[#26354D]">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
-          <span className="inline-flex items-center gap-1 font-semibold text-[#132238]">
+          <span className="inline-flex items-center gap-1 font-semibold text-[#132238] dark:text-slate-100">
             <MapPin className="w-3.5 h-3.5 text-[#D95D39]" />
             {ticket.block} · Room {ticket.room}
           </span>
           <span className="inline-flex items-center gap-1">
-            <Wrench className="w-3.5 h-3.5 text-[#1B6B5A]" />
+            <Wrench className="w-3.5 h-3.5 text-[#1B6B5A] dark:text-emerald-400" />
             {ticket.assignedTo ? ticket.assignedTo : 'Waiting for assignment'}
           </span>
           <span className="inline-flex items-center gap-1">
@@ -158,7 +158,7 @@ export function TicketCard({
 
         <button
           onClick={() => setShowTimeline((v) => !v)}
-          className="inline-flex items-center gap-1 text-[#132238] hover:text-[#D95D39] font-semibold"
+          className="inline-flex items-center gap-1 text-[#132238] dark:text-slate-200 hover:text-[#D95D39] font-semibold"
         >
           History ({ticket.timeline.length})
           {showTimeline ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
@@ -295,14 +295,14 @@ export function TicketCard({
 
       {/* Timeline */}
       {showTimeline && (
-        <div className="pt-3 border-t border-[#F0EFEA] space-y-2">
+        <div className="pt-3 border-t border-[#F0EFEA] dark:border-[#26354D] space-y-2">
           {ticket.timeline.map((item, i) => (
-            <div key={i} className="text-xs flex flex-wrap justify-between gap-2 bg-[#FAF9F6] border border-[#ECEAE2] px-3 py-2 rounded-lg">
+            <div key={i} className="text-xs flex flex-wrap justify-between gap-2 bg-[#FAF9F6] dark:bg-[#0E1624] border border-[#ECEAE2] dark:border-[#26354D] px-3 py-2 rounded-lg">
               <div>
-                <span className="font-bold text-[#132238]">{item.actor}:</span>{' '}
-                <span className="text-[#475569]">{item.note}</span>
+                <span className="font-bold text-[#132238] dark:text-slate-100">{item.actor}:</span>{' '}
+                <span className="text-[#475569] dark:text-slate-300">{item.note}</span>
               </div>
-              <span className="text-[#94A3B8] font-mono">{new Date(item.at).toLocaleString()}</span>
+              <span className="text-[#94A3B8] dark:text-slate-500 font-mono">{new Date(item.at).toLocaleString()}</span>
             </div>
           ))}
         </div>
