@@ -21,6 +21,36 @@ interface ReportModalProps {
   }) => void;
 }
 
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const MAX_IMAGE_BYTES = 2 * 1024 * 1024; // 2 MB
+
+function compressImage(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Could not read the selected file.'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('Selected file is not a valid image.'));
+      img.onload = () => {
+        const maxW = 800;
+        const scale = img.width > maxW ? maxW / img.width : 1;
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(String(reader.result));
+          return;
+        }
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', 0.72));
+      };
+      img.src = String(reader.result);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 export function ReportModal({ defaultName, onClose, onSubmit }: ReportModalProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -36,14 +66,24 @@ export function ReportModal({ defaultName, onClose, onSubmit }: ReportModalProps
   const [photoDataUrl, setPhotoDataUrl] = useState<string | undefined>(undefined);
   const [error, setError] = useState('');
 
-  const handlePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') setPhotoDataUrl(reader.result);
-    };
-    reader.readAsDataURL(file);
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      setError('Only JPG, PNG, or WebP images are allowed.');
+      return;
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      setError('Image is too large. Please pick a photo under 2 MB.');
+      return;
+    }
+    try {
+      setError('');
+      const compressed = await compressImage(file);
+      setPhotoDataUrl(compressed);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not process image.');
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {

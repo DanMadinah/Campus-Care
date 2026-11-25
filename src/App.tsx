@@ -17,6 +17,8 @@ import {
   computeMetrics,
   createInitialTickets,
   createTicket,
+  fetchCloudTickets,
+  isCloudSyncEnabled,
   loadTickets,
   rateTicket,
   reopenTicket,
@@ -52,6 +54,7 @@ export default function App() {
   const [tickets, setTickets] = useState<MaintenanceTicket[]>(() => loadTickets());
   const role: UserRole = session?.role ?? 'STUDENT';
   const [search, setSearch] = useState('');
+  const [studentView, setStudentView] = useState<'MINE' | 'SHARED'>('MINE');
   const [blockFilter, setBlockFilter] = useState<string>('ALL');
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
@@ -83,6 +86,12 @@ export default function App() {
   });
 
   useEffect(() => {
+    fetchCloudTickets().then((cloud) => {
+      if (cloud) setTickets(cloud);
+    });
+  }, []);
+
+  useEffect(() => {
     saveTickets(tickets);
   }, [tickets]);
 
@@ -100,26 +109,43 @@ export default function App() {
     setTimeout(() => setToast((curr) => (curr === msg ? null : curr)), 2600);
   };
 
-  const metrics = useMemo(() => computeMetrics(tickets), [tickets]);
+  // Privacy boundary: Students see ONLY their own reports in "My Reports"
+  // and anonymised open block issues in "Shared Block Issues".
+  const scopedTickets = useMemo(() => {
+    if (role !== 'STUDENT' || !session) return tickets;
+    const myEmail = session.email.trim().toLowerCase();
+    if (studentView === 'MINE') {
+      return tickets.filter((t) => t.reporterEmail.toLowerCase() === myEmail);
+    }
+    return tickets.filter((t) => t.reporterEmail.toLowerCase() !== myEmail && t.status !== 'Resolved');
+  }, [tickets, role, session, studentView]);
+
+  const metrics = useMemo(
+    () => computeMetrics(role === 'STUDENT' && session ? tickets.filter((t) => t.reporterEmail.toLowerCase() === session.email.toLowerCase()) : tickets),
+    [tickets, role, session]
+  );
 
   const allCategories = useMemo(() => {
-    const set = new Set<string>(tickets.map((t) => t.category));
+    const set = new Set<string>(scopedTickets.map((t) => t.category));
     return Array.from(set).sort();
-  }, [tickets]);
+  }, [scopedTickets]);
 
   const filteredTickets = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return tickets.filter((t) => {
+    return scopedTickets.filter((t) => {
       if (blockFilter !== 'ALL' && t.block !== blockFilter) return false;
       if (categoryFilter !== 'ALL' && t.category !== categoryFilter) return false;
       if (statusFilter !== 'ALL' && t.status !== statusFilter) return false;
       if (q) {
-        const hay = `${t.id} ${t.title} ${t.description} ${t.room} ${t.block} ${t.category} ${t.reportedBy}`.toLowerCase();
+        const hay =
+          role === 'STUDENT' && studentView === 'SHARED'
+            ? `${t.id} ${t.title} ${t.description} ${t.block} ${t.category}`.toLowerCase()
+            : `${t.id} ${t.title} ${t.description} ${t.room} ${t.block} ${t.category} ${t.reportedBy}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
     });
-  }, [tickets, search, blockFilter, categoryFilter, statusFilter]);
+  }, [scopedTickets, search, blockFilter, categoryFilter, statusFilter, role, studentView]);
 
   const pushNotif = (ticketId: string, message: string) => {
     setNotifs((prev) => [
@@ -143,9 +169,13 @@ export default function App() {
     preferredTime: string;
     photoDataUrl?: string;
   }) => {
-    const next = createTicket(tickets, input);
+    const next = createTicket(tickets, {
+      ...input,
+      reporterEmail: session?.email ?? 'student@campus.edu.my',
+    });
     const createdId = next[0].id;
     setTickets(next);
+    setStudentView('MINE');
     pushNotif(createdId, `New report ${createdId} submitted for Room ${input.room.trim().toUpperCase()}.`);
     notify(`Report ${createdId} submitted! Save ${createdId} to track progress.`);
   };
@@ -325,13 +355,15 @@ export default function App() {
               <span className="hidden sm:inline">{darkMode ? 'Light' : 'Dark'}</span>
             </button>
 
-            <button
-              onClick={handleReset}
-              title="Reset sample records"
-              className="p-2 rounded-xl bg-[#1D314F] text-slate-300 hover:text-white border border-white/10"
-            >
-              <RotateCcw className="w-4 h-4" />
-            </button>
+            {role === 'WARDEN' && (
+              <button
+                onClick={handleReset}
+                title="Reset sample records (Admin only)"
+                className="p-2 rounded-xl bg-[#1D314F] text-slate-300 hover:text-white border border-white/10"
+              >
+                <RotateCcw className="w-4 h-4" />
+              </button>
+            )}
 
             <button
               onClick={handleLogout}
@@ -365,8 +397,36 @@ export default function App() {
               </>
             )}
           </span>
-          <span className="text-[#94A3B8] dark:text-slate-500">Saved locally in your browser</span>
+          <span className="text-[#94A3B8] dark:text-slate-500">
+            {isCloudSyncEnabled ? 'Cloud Sync Active' : 'Demo Storage (Browser Only)'}
+          </span>
         </div>
+
+        {/* Student Privacy Scope Switcher */}
+        {role === 'STUDENT' && (
+          <div className="inline-flex rounded-xl bg-white/95 dark:bg-[#162133] border border-[#E5E3DC] dark:border-[#26354D] p-1 gap-1">
+            <button
+              onClick={() => setStudentView('MINE')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${
+                studentView === 'MINE'
+                  ? 'bg-[#132238] text-white dark:bg-[#D95D39]'
+                  : 'text-[#475569] dark:text-slate-300 hover:text-[#132238] dark:hover:text-white'
+              }`}
+            >
+              My Reports ({tickets.filter((t) => t.reporterEmail.toLowerCase() === session.email.toLowerCase()).length})
+            </button>
+            <button
+              onClick={() => setStudentView('SHARED')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${
+                studentView === 'SHARED'
+                  ? 'bg-[#132238] text-white dark:bg-[#D95D39]'
+                  : 'text-[#475569] dark:text-slate-300 hover:text-[#132238] dark:hover:text-white'
+              }`}
+            >
+              Shared Block Issues (Anonymised)
+            </button>
+          </div>
+        )}
 
         {/* Stat Tiles */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
@@ -452,6 +512,7 @@ export default function App() {
               key={ticket.id}
               ticket={ticket}
               role={role}
+              anonymized={role === 'STUDENT' && studentView === 'SHARED'}
               onUpvote={handleUpvote}
               onAssign={handleAssign}
               onUpdateStatus={handleUpdateStatus}

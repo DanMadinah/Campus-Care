@@ -30,6 +30,7 @@ export interface MaintenanceTicket {
   priority: Priority;
   status: TicketStatus;
   reportedBy: string;
+  reporterEmail: string;
   studentId: string;
   phone: string;
   preferredTime: string;

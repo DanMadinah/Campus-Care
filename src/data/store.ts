@@ -7,7 +7,10 @@ import {
   TicketStatus,
 } from '../types';
 
-const STORAGE_KEY = 'campuscare_tickets_v2';
+const STORAGE_KEY = 'campuscare_tickets_v3';
+const CLOUD_URL = (import.meta.env?.VITE_FIREBASE_DB_URL as string | undefined)?.replace(/\/+$/, '') || '';
+
+export const isCloudSyncEnabled = CLOUD_URL.length > 0;
 
 export const BLOCKS: HostelBlock[] = ['Block A', 'Block B', 'Block C', 'Block D'];
 
@@ -50,6 +53,7 @@ export function createInitialTickets(): MaintenanceTicket[] {
       priority: 'High',
       status: 'In Progress',
       reportedBy: 'Muhammad Bukar',
+      reporterEmail: 'muhammad@campus.edu.my',
       studentId: 'STU-2026-014',
       phone: '011-2345-6789',
       preferredTime: 'Afternoon (2:00 PM - 5:00 PM)',
@@ -73,6 +77,7 @@ export function createInitialTickets(): MaintenanceTicket[] {
       priority: 'Urgent',
       status: 'Assigned',
       reportedBy: 'Aiman Hakim',
+      reporterEmail: 'aiman@campus.edu.my',
       studentId: 'STU-2026-089',
       phone: '012-8841-203',
       preferredTime: 'Anytime (Key left with warden)',
@@ -81,20 +86,21 @@ export function createInitialTickets(): MaintenanceTicket[] {
       createdAt: '2026-11-24T13:20:00Z',
       updatedAt: '2026-11-24T14:00:00Z',
       timeline: [
-        { at: '2026-11-24T13:20:00Z', actor: 'Aiman Hakim', note: 'Issue reported for Room B-108.' },
+        { at: '2026-11-24T13:20:00Z', actor: 'Aiman Hakim', note: 'Issue reported for Block B shared bathroom.' },
         { at: '2026-11-24T14:00:00Z', actor: 'Hostel Warden', note: 'Marked Urgent and assigned to Encik Kamal.' },
       ],
     },
     {
       id: 'CC-102',
       title: 'Wi-Fi keeps disconnecting on Level 3 corridor',
-      description: 'Students in rooms C-301 to C-310 lose Wi-Fi signal every 10 minutes during evening classes.',
+      description: 'Students along the Level 3 corridor lose Wi-Fi signal every 10 minutes during evening classes.',
       category: 'Internet & Wi-Fi',
       block: 'Block C',
       room: 'C-305',
       priority: 'High',
       status: 'Submitted',
       reportedBy: 'Nurul Izzah',
+      reporterEmail: 'nurul@campus.edu.my',
       studentId: 'STU-2026-112',
       phone: '017-4491-812',
       preferredTime: 'Morning (9:00 AM - 12:00 PM)',
@@ -116,6 +122,7 @@ export function createInitialTickets(): MaintenanceTicket[] {
       priority: 'Medium',
       status: 'Resolved',
       reportedBy: 'Daniel Lim',
+      reporterEmail: 'daniel@campus.edu.my',
       studentId: 'STU-2026-041',
       phone: '016-7730-519',
       preferredTime: 'Afternoon (2:00 PM - 5:00 PM)',
@@ -152,8 +159,28 @@ export function saveTickets(tickets: MaintenanceTicket[]): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(tickets));
   } catch {
-    // ignore storage errors
+    // ignore quota errors
   }
+  if (isCloudSyncEnabled) {
+    fetch(`${CLOUD_URL}/campuscare/tickets.json`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(tickets),
+    }).catch(() => {});
+  }
+}
+
+export async function fetchCloudTickets(): Promise<MaintenanceTicket[] | null> {
+  if (!isCloudSyncEnabled) return null;
+  try {
+    const res = await fetch(`${CLOUD_URL}/campuscare/tickets.json`, { cache: 'no-store' });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (Array.isArray(data) && data.length > 0) return data as MaintenanceTicket[];
+  } catch {
+    // fallback to localStorage
+  }
+  return null;
 }
 
 export function nextTicketId(tickets: MaintenanceTicket[]): string {
@@ -174,6 +201,7 @@ export function createTicket(
     room: string;
     priority: Priority;
     reportedBy: string;
+    reporterEmail: string;
     studentId: string;
     phone?: string;
     preferredTime?: string;
@@ -192,6 +220,7 @@ export function createTicket(
     priority: input.priority,
     status: 'Submitted',
     reportedBy: input.reportedBy.trim() || 'Student',
+    reporterEmail: input.reporterEmail.trim().toLowerCase(),
     studentId: input.studentId.trim() || 'STU-000',
     phone: (input.phone ?? '').trim() || 'Not provided',
     preferredTime: input.preferredTime || VISIT_SLOTS[0],
@@ -323,25 +352,58 @@ export function computeMetrics(tickets: MaintenanceTicket[]) {
   return { total: tickets.length, open, urgent, inProgress, resolved, byBlock, byCategory };
 }
 
+/**
+ * RFC-4180 CSV cell escaping + spreadsheet formula-injection protection.
+ * Prefixes cells starting with =, +, -, @, tab, or CR with a single quote.
+ */
+export function escapeCsvCell(raw: unknown): string {
+  let str = String(raw ?? '');
+  if (/^[=+\-@\t\r]/.test(str)) {
+    str = `'${str}`;
+  }
+  const escaped = str.replace(/"/g, '""');
+  return `"${escaped}"`;
+}
+
 export function ticketsToCsv(tickets: MaintenanceTicket[]): string {
-  const header = 'ID,Title,Category,Block,Room,Priority,Status,Reported By,Phone,Preferred Time,Assigned To,Confirmations,Rating,Created At';
+  const headers = [
+    'ID',
+    'Title',
+    'Category',
+    'Block',
+    'Room',
+    'Priority',
+    'Status',
+    'Reported By',
+    'Email',
+    'Phone',
+    'Preferred Time',
+    'Assigned To',
+    'Confirmations',
+    'Rating',
+    'Created At',
+  ];
+  const headerLine = headers.map(escapeCsvCell).join(',');
   const rows = tickets.map((t) =>
     [
       t.id,
-      `"${t.title.replace(/"/g, '""')}"`,
-      `"${t.category.replace(/"/g, '""')}"`,
+      t.title,
+      t.category,
       t.block,
       t.room,
       t.priority,
       t.status,
       t.reportedBy,
+      t.reporterEmail,
       t.phone,
-      `"${t.preferredTime}"`,
+      t.preferredTime,
       t.assignedTo ?? 'Unassigned',
       t.upvotes,
       t.rating ?? '',
       t.createdAt,
-    ].join(',')
+    ]
+      .map(escapeCsvCell)
+      .join(',')
   );
-  return [header, ...rows].join('\n');
+  return [headerLine, ...rows].join('\r\n');
 }

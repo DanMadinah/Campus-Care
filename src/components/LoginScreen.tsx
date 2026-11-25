@@ -67,7 +67,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
             </div>
             <div>
               <h1 className="text-lg font-extrabold tracking-tight">Campus Care</h1>
-              <p className="text-xs text-slate-300">Hostel Maintenance Portal · Sign In</p>
+              <p className="text-xs text-slate-300">Hostel Maintenance Portal · Demo Access (Prototype)</p>
             </div>
           </div>
         </div>
@@ -184,7 +184,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
           </button>
 
           <p className="text-[11px] text-center text-[#94A3B8] pt-1">
-            Students can sign in with any valid email. Staff roles require an access code.
+            Prototype demo login (client-side only). Students see only their own reports plus anonymised block issues.
           </p>
         </form>
       </div>

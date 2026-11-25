@@ -8,11 +8,12 @@ import {
   reopenTicket,
   upvoteTicket,
   computeMetrics,
+  escapeCsvCell,
   ticketsToCsv,
 } from '../src/data/store';
 
 describe('Campus Care Maintenance Store', () => {
-  it('creates a ticket including custom Other issue categories', () => {
+  it('creates a ticket with reporterEmail and custom Other issue category', () => {
     const initial = createInitialTickets();
     const updated = createTicket(initial, {
       title: 'Roof dripping during rain',
@@ -22,6 +23,7 @@ describe('Campus Care Maintenance Store', () => {
       room: 'a-301',
       priority: 'Urgent',
       reportedBy: 'Muhammad Bukar',
+      reporterEmail: 'muhammad@campus.edu.my',
       studentId: 'STU-2026-014',
       phone: '011-2345-6789',
     });
@@ -29,6 +31,7 @@ describe('Campus Care Maintenance Store', () => {
     expect(updated.length).toBe(initial.length + 1);
     expect(updated[0].id).toBe('CC-105');
     expect(updated[0].category).toBe('Roof Leak');
+    expect(updated[0].reporterEmail).toBe('muhammad@campus.edu.my');
     expect(updated[0].room).toBe('A-301');
     expect(updated[0].status).toBe('Submitted');
   });
@@ -43,7 +46,7 @@ describe('Campus Care Maintenance Store', () => {
     expect(target.status).toBe('Assigned');
   });
 
-  it('resolves, rates, reopens, upvotes, and exports CSV cleanly', () => {
+  it('resolves, rates, reopens, and upvotes cleanly', () => {
     const initial = createInitialTickets();
     const open = initial.find((t) => t.status === 'In Progress')!;
     const resolved = updateTicketStatus(initial, open.id, 'Resolved', 'Replaced LED tube.', 'Encik Hafiz');
@@ -58,9 +61,29 @@ describe('Campus Care Maintenance Store', () => {
 
     const metrics = computeMetrics(upvoted);
     expect(metrics.total).toBe(initial.length);
+  });
 
-    const csv = ticketsToCsv(upvoted);
-    expect(csv).toContain('ID,Title,Category,Block,Room');
-    expect(csv).toContain(open.id);
+  it('escapes CSV quotes/commas/newlines and blocks spreadsheet formula injection', () => {
+    expect(escapeCsvCell('=CMD("calc")')).toBe('"\'=CMD(""calc"")"');
+    expect(escapeCsvCell('+1+1')).toBe('"\'+1+1"');
+    expect(escapeCsvCell('-2+3')).toBe('"\'-2+3"');
+    expect(escapeCsvCell('@SUM(A1:A2)')).toBe('"\'@SUM(A1:A2)"');
+    expect(escapeCsvCell('Hello, "World"\nLine 2')).toBe('"Hello, ""World""\nLine 2"');
+
+    const initial = createInitialTickets();
+    const withFormula = createTicket(initial, {
+      title: '=HYPERLINK("http://evil.test","click")',
+      description: 'Test',
+      category: 'Other',
+      block: 'Block A',
+      room: 'A-101',
+      priority: 'Low',
+      reportedBy: '+Admin',
+      reporterEmail: 'test@campus.edu.my',
+      studentId: 'STU-1',
+    });
+    const csv = ticketsToCsv(withFormula);
+    expect(csv).toContain('"\'=HYPERLINK(""http://evil.test"",""click"")"');
+    expect(csv).toContain('"\'+Admin"');
   });
 });

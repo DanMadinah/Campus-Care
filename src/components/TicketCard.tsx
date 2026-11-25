@@ -18,6 +18,7 @@ import { MaintenanceTicket, Priority, TicketStatus, UserRole } from '../types';
 interface TicketCardProps {
   ticket: MaintenanceTicket;
   role: UserRole;
+  anonymized?: boolean;
   onUpvote: (id: string) => void;
   onAssign: (id: string, technician: string) => void;
   onUpdateStatus: (id: string, status: TicketStatus, note: string) => void;
@@ -43,6 +44,7 @@ const STATUS_BADGE: Record<TicketStatus, string> = {
 export function TicketCard({
   ticket,
   role,
+  anonymized = false,
   onUpvote,
   onAssign,
   onUpdateStatus,
@@ -101,7 +103,7 @@ export function TicketCard({
         )}
       </div>
 
-      {ticket.photoDataUrl && (
+      {!anonymized && ticket.photoDataUrl && (
         <img
           src={ticket.photoDataUrl}
           alt={ticket.title}
@@ -138,16 +140,18 @@ export function TicketCard({
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
           <span className="inline-flex items-center gap-1 font-semibold text-[#132238] dark:text-slate-100">
             <MapPin className="w-3.5 h-3.5 text-[#D95D39]" />
-            {ticket.block} · Room {ticket.room}
+            {anonymized ? `${ticket.block} · Shared / Another Room` : `${ticket.block} · Room ${ticket.room}`}
           </span>
           <span className="inline-flex items-center gap-1">
             <Wrench className="w-3.5 h-3.5 text-[#1B6B5A] dark:text-emerald-400" />
             {ticket.assignedTo ? ticket.assignedTo : 'Waiting for assignment'}
           </span>
-          <span className="inline-flex items-center gap-1">
-            <Clock className="w-3.5 h-3.5" />
-            {ticket.preferredTime}
-          </span>
+          {!anonymized && (
+            <span className="inline-flex items-center gap-1">
+              <Clock className="w-3.5 h-3.5" />
+              {ticket.preferredTime}
+            </span>
+          )}
           {role !== 'STUDENT' && (
             <span className="inline-flex items-center gap-1">
               <Phone className="w-3.5 h-3.5" />
@@ -156,17 +160,19 @@ export function TicketCard({
           )}
         </div>
 
-        <button
-          onClick={() => setShowTimeline((v) => !v)}
-          className="inline-flex items-center gap-1 text-[#132238] dark:text-slate-200 hover:text-[#D95D39] font-semibold"
-        >
-          History ({ticket.timeline.length})
-          {showTimeline ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-        </button>
+        {!anonymized && (
+          <button
+            onClick={() => setShowTimeline((v) => !v)}
+            className="inline-flex items-center gap-1 text-[#132238] dark:text-slate-200 hover:text-[#D95D39] font-semibold"
+          >
+            History ({ticket.timeline.length})
+            {showTimeline ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </button>
+        )}
       </div>
 
-      {/* Student Rating / Reopen when Resolved */}
-      {role === 'STUDENT' && ticket.status === 'Resolved' && (
+      {/* Student Rating / Reopen when Resolved (own tickets only) */}
+      {role === 'STUDENT' && !anonymized && ticket.status === 'Resolved' && (
         <div className="pt-3 border-t border-[#F0EFEA]">
           {ticket.rating ? (
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs bg-[#F2F8F6] border border-[#CDE6DF] rounded-xl px-3.5 py-2.5 text-[#1B6B5A]">
