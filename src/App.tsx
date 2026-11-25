@@ -10,6 +10,7 @@ import {
   GraduationCap,
   Sun,
   Moon,
+  Bell,
 } from 'lucide-react';
 import {
   BLOCKS,
@@ -32,6 +33,14 @@ import { TicketCard } from './components/TicketCard';
 import { AdminAnalytics } from './components/AdminAnalytics';
 import { MaintenanceBackdrop } from './components/MaintenanceBackdrop';
 
+interface NotificationItem {
+  id: string;
+  ticketId: string;
+  message: string;
+  at: string;
+  read: boolean;
+}
+
 const ROLE_META: Array<{ id: UserRole; label: string; icon: typeof GraduationCap }> = [
   { id: 'STUDENT', label: 'Student', icon: GraduationCap },
   { id: 'WARDEN', label: 'Warden', icon: UserCheck },
@@ -46,6 +55,23 @@ export default function App() {
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showNotifs, setShowNotifs] = useState(false);
+  const [notifs, setNotifs] = useState<NotificationItem[]>([
+    {
+      id: 'n-1',
+      ticketId: 'CC-104',
+      message: 'Encik Hafiz updated CC-104: Ordered replacement 18W LED tube.',
+      at: '2026-11-24T11:30:00Z',
+      read: false,
+    },
+    {
+      id: 'n-2',
+      ticketId: 'CC-103',
+      message: 'Hostel Warden assigned CC-103 (Urgent) to Encik Kamal.',
+      at: '2026-11-24T14:00:00Z',
+      read: false,
+    },
+  ]);
   const [toast, setToast] = useState<string | null>(null);
   const [darkMode, setDarkMode] = useState<boolean>(() => {
     try {
@@ -94,6 +120,15 @@ export default function App() {
     });
   }, [tickets, search, blockFilter, categoryFilter, statusFilter]);
 
+  const pushNotif = (ticketId: string, message: string) => {
+    setNotifs((prev) => [
+      { id: `n-${Date.now()}`, ticketId, message, at: new Date().toISOString(), read: false },
+      ...prev.slice(0, 14),
+    ]);
+  };
+
+  const unreadCount = notifs.filter((n) => !n.read).length;
+
   const handleCreate = (input: {
     title: string;
     description: string;
@@ -107,8 +142,11 @@ export default function App() {
     preferredTime: string;
     photoDataUrl?: string;
   }) => {
-    setTickets((prev) => createTicket(prev, input));
-    notify('Maintenance request submitted');
+    const next = createTicket(tickets, input);
+    const createdId = next[0].id;
+    setTickets(next);
+    pushNotif(createdId, `New report ${createdId} submitted for Room ${input.room.trim().toUpperCase()}.`);
+    notify(`Report ${createdId} submitted! Save ${createdId} to track progress.`);
   };
 
   const handleUpvote = (id: string) => {
@@ -118,6 +156,7 @@ export default function App() {
 
   const handleAssign = (id: string, technician: string) => {
     setTickets((prev) => assignTechnician(prev, id, technician));
+    pushNotif(id, `Hostel Warden assigned ${id} to ${technician}.`);
     notify(`Assigned ${id} to ${technician}`);
   };
 
@@ -125,6 +164,7 @@ export default function App() {
     const target = tickets.find((t) => t.id === id);
     const actor = target?.assignedTo ?? 'Maintenance Staff';
     setTickets((prev) => updateTicketStatus(prev, id, status, note, actor));
+    pushNotif(id, `${actor} marked ${id} as ${status}${note.trim() ? `: ${note.trim()}` : '.'}`);
     notify(`Updated ${id} to ${status}`);
   };
 
@@ -213,6 +253,54 @@ export default function App() {
                 <Download className="w-3.5 h-3.5" /> Export CSV
               </button>
             )}
+
+            {/* Notifications Bell */}
+            <div className="relative">
+              <button
+                onClick={() => setShowNotifs((v) => !v)}
+                title="Maintenance notifications"
+                className="relative p-2 rounded-xl bg-[#1D314F] text-slate-200 hover:text-white border border-white/10"
+              >
+                <Bell className="w-4 h-4" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-[#D95D39] text-white text-[10px] font-bold flex items-center justify-center">
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {showNotifs && (
+                <div className="absolute right-0 mt-2 w-80 max-w-[90vw] rounded-2xl bg-white dark:bg-[#162133] text-[#132238] dark:text-slate-100 border border-[#E5E3DC] dark:border-[#26354D] shadow-2xl overflow-hidden z-50">
+                  <div className="px-4 py-3 border-b border-[#F0EFEA] dark:border-[#26354D] flex items-center justify-between">
+                    <span className="text-xs font-bold">Notifications</span>
+                    <button
+                      onClick={() => setNotifs((prev) => prev.map((n) => ({ ...n, read: true })))}
+                      className="text-[11px] font-semibold text-[#D95D39] hover:underline"
+                    >
+                      Mark all read
+                    </button>
+                  </div>
+                  <div className="max-h-72 overflow-y-auto divide-y divide-[#F0EFEA] dark:divide-[#26354D]">
+                    {notifs.map((n) => (
+                      <div
+                        key={n.id}
+                        onClick={() => {
+                          setSearch(n.ticketId);
+                          setNotifs((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)));
+                          setShowNotifs(false);
+                        }}
+                        className={`px-4 py-3 text-xs cursor-pointer hover:bg-[#FAF9F6] dark:hover:bg-[#0E1624] ${
+                          n.read ? 'opacity-70' : 'bg-[#FDF6F0]/60 dark:bg-[#1D2B42]'
+                        }`}
+                      >
+                        <div className="font-medium leading-snug">{n.message}</div>
+                        <div className="text-[10px] text-[#94A3B8] mt-1">{new Date(n.at).toLocaleString()}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
 
             <button
               onClick={() => setDarkMode((d) => !d)}
