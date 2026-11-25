@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Home, Mail, User, Lock, GraduationCap, UserCheck, Wrench, AlertCircle, IdCard } from 'lucide-react';
+import { Home, Mail, User, Lock, GraduationCap, UserCheck, Wrench, AlertCircle, Hash } from 'lucide-react';
 import { UserRole } from '../types';
 import { MaintenanceBackdrop } from './MaintenanceBackdrop';
 
@@ -169,7 +169,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
                 Matric Number
               </label>
               <div className="relative">
-                <IdCard className="w-4 h-4 text-[#94A3B8] absolute left-3 top-2.5" />
+                <Hash className="w-4 h-4 text-[#94A3B8] absolute left-3 top-2.5" />
                 <input
                   required
                   value={matricNumber}
