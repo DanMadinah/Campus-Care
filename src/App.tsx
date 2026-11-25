@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Building2,
+  Home,
   Plus,
   Download,
   RotateCcw,
@@ -11,26 +11,27 @@ import {
 } from 'lucide-react';
 import {
   BLOCKS,
-  CATEGORIES,
   STATUS_ORDER,
   assignTechnician,
   computeMetrics,
   createInitialTickets,
   createTicket,
   loadTickets,
+  rateTicket,
+  reopenTicket,
   saveTickets,
   ticketsToCsv,
   updateTicketStatus,
   upvoteTicket,
 } from './data/store';
-import { HostelBlock, IssueCategory, MaintenanceTicket, Priority, TicketStatus, UserRole } from './types';
+import { HostelBlock, MaintenanceTicket, Priority, TicketStatus, UserRole } from './types';
 import { ReportModal } from './components/ReportModal';
 import { TicketCard } from './components/TicketCard';
 import { AdminAnalytics } from './components/AdminAnalytics';
 
 const ROLE_META: Array<{ id: UserRole; label: string; icon: typeof GraduationCap }> = [
   { id: 'STUDENT', label: 'Student', icon: GraduationCap },
-  { id: 'WARDEN', label: 'Warden / Admin', icon: UserCheck },
+  { id: 'WARDEN', label: 'Warden', icon: UserCheck },
   { id: 'TECHNICIAN', label: 'Technician', icon: Wrench },
 ];
 
@@ -55,6 +56,11 @@ export default function App() {
 
   const metrics = useMemo(() => computeMetrics(tickets), [tickets]);
 
+  const allCategories = useMemo(() => {
+    const set = new Set<string>(tickets.map((t) => t.category));
+    return Array.from(set).sort();
+  }, [tickets]);
+
   const filteredTickets = useMemo(() => {
     const q = search.trim().toLowerCase();
     return tickets.filter((t) => {
@@ -72,21 +78,23 @@ export default function App() {
   const handleCreate = (input: {
     title: string;
     description: string;
-    category: IssueCategory;
+    category: string;
     block: HostelBlock;
     room: string;
     priority: Priority;
     reportedBy: string;
     studentId: string;
+    phone: string;
+    preferredTime: string;
     photoDataUrl?: string;
   }) => {
     setTickets((prev) => createTicket(prev, input));
-    notify('Maintenance report submitted');
+    notify('Maintenance request submitted');
   };
 
   const handleUpvote = (id: string) => {
     setTickets((prev) => upvoteTicket(prev, id));
-    notify(`Confirmed ${id} affects your block/room`);
+    notify(`Confirmed ${id} affects your room/block`);
   };
 
   const handleAssign = (id: string, technician: string) => {
@@ -101,40 +109,54 @@ export default function App() {
     notify(`Updated ${id} to ${status}`);
   };
 
+  const handleRate = (id: string, rating: number, feedback: string) => {
+    setTickets((prev) => rateTicket(prev, id, rating, feedback));
+    notify(`Thanks for rating ${id} (${rating}/5)`);
+  };
+
+  const handleReopen = (id: string, reason: string) => {
+    setTickets((prev) => reopenTicket(prev, id, reason));
+    notify(`Reopened ${id} for follow-up`);
+  };
+
+  const handleCopyId = (id: string) => {
+    navigator.clipboard?.writeText(id).catch(() => {});
+    notify(`Copied reference ${id}`);
+  };
+
   const handleExportCsv = () => {
     const csv = ticketsToCsv(tickets);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'campuscare-maintenance-log.csv';
+    a.download = 'campus-care-maintenance-log.csv';
     a.click();
     URL.revokeObjectURL(url);
   };
 
   const handleReset = () => {
     setTickets(createInitialTickets());
-    notify('Sample hostel data restored');
+    notify('Sample hostel records restored');
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
-      {/* Top Navigation */}
-      <header className="sticky top-0 z-30 border-b border-slate-800 bg-slate-950/90 backdrop-blur">
-        <div className="max-w-6xl mx-auto px-4 py-3.5 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow">
-              <Building2 className="w-5 h-5" />
+    <div className="min-h-screen bg-[#F6F5F1] text-[#132238]">
+      {/* Architectural Deep-Navy Top Banner */}
+      <header className="bg-[#132238] text-white border-b-4 border-[#D95D39]">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-5 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-[#D95D39] flex items-center justify-center text-white shadow-sm">
+              <Home className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="font-bold text-base text-white leading-tight">Campus Care</h1>
-              <p className="text-xs text-slate-400">Hostel Maintenance Portal | Muhammad Abdullahi Bukar</p>
+              <h1 className="font-extrabold text-lg tracking-tight leading-tight">Campus Care</h1>
+              <p className="text-xs text-slate-300">Hostel Maintenance Desk · Muhammad Abdullahi Bukar</p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Role Switcher */}
-            <div className="inline-flex rounded-xl bg-slate-900 border border-slate-800 p-1">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <div className="inline-flex rounded-xl bg-[#1D314F] p-1 border border-white/10">
               {ROLE_META.map((r) => {
                 const Icon = r.icon;
                 const active = role === r.id;
@@ -143,7 +165,7 @@ export default function App() {
                     key={r.id}
                     onClick={() => setRole(r.id)}
                     className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                      active ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'
+                      active ? 'bg-white text-[#132238] shadow-sm' : 'text-slate-300 hover:text-white'
                     }`}
                   >
                     <Icon className="w-3.5 h-3.5" />
@@ -156,16 +178,16 @@ export default function App() {
             {role === 'STUDENT' && (
               <button
                 onClick={() => setShowReportModal(true)}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white shadow"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#D95D39] hover:bg-[#C14B29] text-xs font-bold text-white shadow-sm"
               >
-                <Plus className="w-4 h-4" /> Report Issue
+                <Plus className="w-4 h-4" /> Report an Issue
               </button>
             )}
 
             {role === 'WARDEN' && (
               <button
                 onClick={handleExportCsv}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 hover:border-emerald-500 text-xs font-medium text-slate-200"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#1B6B5A] hover:bg-[#145446] text-xs font-semibold text-white"
               >
                 <Download className="w-3.5 h-3.5" /> Export CSV
               </button>
@@ -173,8 +195,8 @@ export default function App() {
 
             <button
               onClick={handleReset}
-              title="Reset sample data"
-              className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white"
+              title="Reset sample records"
+              className="p-2 rounded-xl bg-[#1D314F] text-slate-300 hover:text-white border border-white/10"
             >
               <RotateCcw className="w-4 h-4" />
             </button>
@@ -182,58 +204,70 @@ export default function App() {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
-        {/* Role Helper Banner */}
-        <div className="rounded-2xl bg-slate-900/70 border border-slate-800 px-4 py-3 text-xs text-slate-300 flex flex-wrap items-center justify-between gap-2">
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+        {/* Role Context Strip */}
+        <div className="rounded-xl bg-white border border-[#E5E3DC] px-4 py-3 text-xs text-[#475569] flex flex-wrap items-center justify-between gap-2">
           <span>
-            {role === 'STUDENT' && 'Student view: Report faulty lights, leaking taps, broken fans, or Wi-Fi problems and track repair progress.'}
-            {role === 'WARDEN' && 'Warden / Admin view: Review open issues across all hostel blocks, assign technicians, and export CSV logs.'}
-            {role === 'TECHNICIAN' && 'Technician view: Update job status (In Progress / Resolved) and add repair notes visible to students.'}
+            {role === 'STUDENT' && (
+              <>
+                <b className="text-[#132238]">Student Portal:</b> Report faulty lights, leaking taps, broken fans, Wi-Fi issues, or write your own custom issue under <b>Other</b>.
+              </>
+            )}
+            {role === 'WARDEN' && (
+              <>
+                <b className="text-[#132238]">Warden Office:</b> Monitor open repairs across Blocks A–D, assign technicians, and download CSV logs.
+              </>
+            )}
+            {role === 'TECHNICIAN' && (
+              <>
+                <b className="text-[#132238]">Maintenance Staff:</b> Update job progress and post repair notes directly to the student&apos;s ticket.
+              </>
+            )}
           </span>
-          <span className="text-slate-500">Data saved in browser storage</span>
+          <span className="text-[#94A3B8]">Saved locally in your browser</span>
         </div>
 
-        {/* KPI Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="rounded-2xl bg-slate-900/80 border border-slate-800 p-4">
-            <div className="text-xs text-slate-400">Open Issues</div>
-            <div className="text-2xl font-bold text-white mt-1">{metrics.open}</div>
+        {/* Stat Tiles */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+          <div className="rounded-2xl bg-white border border-[#E5E3DC] p-4 border-l-4 border-l-[#132238]">
+            <div className="text-xs font-medium text-[#64748B]">Open Reports</div>
+            <div className="text-2xl font-extrabold text-[#132238] mt-1">{metrics.open}</div>
           </div>
-          <div className="rounded-2xl bg-slate-900/80 border border-slate-800 p-4">
-            <div className="text-xs text-slate-400">Urgent Open</div>
-            <div className="text-2xl font-bold text-rose-400 mt-1">{metrics.urgent}</div>
+          <div className="rounded-2xl bg-white border border-[#E5E3DC] p-4 border-l-4 border-l-rose-600">
+            <div className="text-xs font-medium text-[#64748B]">Urgent Open</div>
+            <div className="text-2xl font-extrabold text-rose-700 mt-1">{metrics.urgent}</div>
           </div>
-          <div className="rounded-2xl bg-slate-900/80 border border-slate-800 p-4">
-            <div className="text-xs text-slate-400">In Progress</div>
-            <div className="text-2xl font-bold text-amber-400 mt-1">{metrics.inProgress}</div>
+          <div className="rounded-2xl bg-white border border-[#E5E3DC] p-4 border-l-4 border-l-[#D95D39]">
+            <div className="text-xs font-medium text-[#64748B]">In Progress</div>
+            <div className="text-2xl font-extrabold text-[#D95D39] mt-1">{metrics.inProgress}</div>
           </div>
-          <div className="rounded-2xl bg-slate-900/80 border border-slate-800 p-4">
-            <div className="text-xs text-slate-400">Resolved</div>
-            <div className="text-2xl font-bold text-emerald-400 mt-1">{metrics.resolved}</div>
+          <div className="rounded-2xl bg-white border border-[#E5E3DC] p-4 border-l-4 border-l-[#1B6B5A]">
+            <div className="text-xs font-medium text-[#64748B]">Resolved</div>
+            <div className="text-2xl font-extrabold text-[#1B6B5A] mt-1">{metrics.resolved}</div>
           </div>
         </div>
 
-        {/* Warden Block & Category Breakdown */}
+        {/* Warden Block & Category Charts */}
         {role === 'WARDEN' && (
           <AdminAnalytics byBlock={metrics.byBlock} byCategory={metrics.byCategory} total={metrics.total} />
         )}
 
-        {/* Filters */}
+        {/* Search & Filter Bar */}
         <div className="flex flex-wrap items-center gap-2.5">
-          <div className="relative flex-1 min-w-[200px]">
-            <Search className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
+          <div className="relative flex-1 min-w-[220px]">
+            <Search className="w-4 h-4 text-[#94A3B8] absolute left-3.5 top-2.5" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by room, issue, ID, or student..."
-              className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              placeholder="Search room, ticket ID (e.g. CC-104), issue, or student..."
+              className="w-full bg-white border border-[#D8D5CC] rounded-xl pl-10 pr-3 py-2 text-sm text-[#132238] focus:outline-none focus:border-[#D95D39]"
             />
           </div>
 
           <select
             value={blockFilter}
             onChange={(e) => setBlockFilter(e.target.value)}
-            className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200"
+            className="bg-white border border-[#D8D5CC] rounded-xl px-3 py-2 text-xs font-semibold text-[#132238]"
           >
             <option value="ALL">All Blocks</option>
             {BLOCKS.map((b) => (
@@ -246,10 +280,10 @@ export default function App() {
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200"
+            className="bg-white border border-[#D8D5CC] rounded-xl px-3 py-2 text-xs font-semibold text-[#132238]"
           >
             <option value="ALL">All Categories</option>
-            {CATEGORIES.map((c) => (
+            {allCategories.map((c) => (
               <option key={c} value={c}>
                 {c}
               </option>
@@ -259,7 +293,7 @@ export default function App() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200"
+            className="bg-white border border-[#D8D5CC] rounded-xl px-3 py-2 text-xs font-semibold text-[#132238]"
           >
             <option value="ALL">All Statuses</option>
             {STATUS_ORDER.map((s) => (
@@ -270,8 +304,8 @@ export default function App() {
           </select>
         </div>
 
-        {/* Ticket List */}
-        <div className="space-y-3">
+        {/* Ticket Feed */}
+        <div className="space-y-3.5">
           {filteredTickets.map((ticket) => (
             <TicketCard
               key={ticket.id}
@@ -280,11 +314,14 @@ export default function App() {
               onUpvote={handleUpvote}
               onAssign={handleAssign}
               onUpdateStatus={handleUpdateStatus}
+              onRate={handleRate}
+              onReopen={handleReopen}
+              onCopyId={handleCopyId}
             />
           ))}
 
           {filteredTickets.length === 0 && (
-            <div className="rounded-2xl border border-dashed border-slate-800 p-10 text-center text-sm text-slate-500">
+            <div className="rounded-2xl bg-white border border-dashed border-[#CFCBC0] p-10 text-center text-sm text-[#64748B]">
               No maintenance reports match your current filters.
             </div>
           )}
@@ -296,7 +333,7 @@ export default function App() {
       )}
 
       {toast && (
-        <div className="fixed bottom-5 right-5 z-50 px-4 py-2.5 rounded-xl bg-slate-900 border border-emerald-500/40 text-sm text-emerald-100 shadow-2xl">
+        <div className="fixed bottom-5 right-5 z-50 px-4 py-2.5 rounded-xl bg-[#132238] text-white text-sm font-medium shadow-xl">
           {toast}
         </div>
       )}

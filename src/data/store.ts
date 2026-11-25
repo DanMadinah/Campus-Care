@@ -1,17 +1,17 @@
 import {
   HostelBlock,
-  IssueCategory,
   MaintenanceTicket,
+  PresetCategory,
   Priority,
   Technician,
   TicketStatus,
 } from '../types';
 
-const STORAGE_KEY = 'campuscare_tickets_v1';
+const STORAGE_KEY = 'campuscare_tickets_v2';
 
 export const BLOCKS: HostelBlock[] = ['Block A', 'Block B', 'Block C', 'Block D'];
 
-export const CATEGORIES: IssueCategory[] = [
+export const CATEGORIES: PresetCategory[] = [
   'Lights & Electrical',
   'Plumbing & Taps',
   'Fan & AC',
@@ -22,6 +22,12 @@ export const CATEGORIES: IssueCategory[] = [
 
 export const PRIORITIES: Priority[] = ['Low', 'Medium', 'High', 'Urgent'];
 
+export const VISIT_SLOTS: string[] = [
+  'Morning (9:00 AM - 12:00 PM)',
+  'Afternoon (2:00 PM - 5:00 PM)',
+  'Anytime (Key left with warden)',
+];
+
 export const STATUS_ORDER: TicketStatus[] = ['Submitted', 'Assigned', 'In Progress', 'Resolved'];
 
 export const TECHNICIANS: Technician[] = [
@@ -29,7 +35,7 @@ export const TECHNICIANS: Technician[] = [
   { id: 'tech-2', name: 'Encik Kamal', specialty: 'Plumbing & Taps' },
   { id: 'tech-3', name: 'Encik Faizal', specialty: 'Fan & AC' },
   { id: 'tech-4', name: 'Siti Nur', specialty: 'Internet & Wi-Fi' },
-  { id: 'tech-5', name: 'Encik Razak', specialty: 'Furniture & Doors' },
+  { id: 'tech-5', name: 'Encik Razak', specialty: 'General & Carpentry' },
 ];
 
 export function createInitialTickets(): MaintenanceTicket[] {
@@ -45,6 +51,8 @@ export function createInitialTickets(): MaintenanceTicket[] {
       status: 'In Progress',
       reportedBy: 'Muhammad Bukar',
       studentId: 'STU-2026-014',
+      phone: '011-2345-6789',
+      preferredTime: 'Afternoon (2:00 PM - 5:00 PM)',
       assignedTo: 'Encik Hafiz',
       upvotes: 2,
       createdAt: '2026-11-24T08:15:00Z',
@@ -66,6 +74,8 @@ export function createInitialTickets(): MaintenanceTicket[] {
       status: 'Assigned',
       reportedBy: 'Aiman Hakim',
       studentId: 'STU-2026-089',
+      phone: '012-8841-203',
+      preferredTime: 'Anytime (Key left with warden)',
       assignedTo: 'Encik Kamal',
       upvotes: 5,
       createdAt: '2026-11-24T13:20:00Z',
@@ -86,6 +96,8 @@ export function createInitialTickets(): MaintenanceTicket[] {
       status: 'Submitted',
       reportedBy: 'Nurul Izzah',
       studentId: 'STU-2026-112',
+      phone: '017-4491-812',
+      preferredTime: 'Morning (9:00 AM - 12:00 PM)',
       assignedTo: null,
       upvotes: 9,
       createdAt: '2026-11-25T07:40:00Z',
@@ -105,8 +117,12 @@ export function createInitialTickets(): MaintenanceTicket[] {
       status: 'Resolved',
       reportedBy: 'Daniel Lim',
       studentId: 'STU-2026-041',
+      phone: '016-7730-519',
+      preferredTime: 'Afternoon (2:00 PM - 5:00 PM)',
       assignedTo: 'Encik Faizal',
       upvotes: 1,
+      rating: 5,
+      feedback: 'Fixed quickly and works great now.',
       createdAt: '2026-11-22T10:00:00Z',
       updatedAt: '2026-11-23T15:10:00Z',
       resolvedAt: '2026-11-23T15:10:00Z',
@@ -153,34 +169,43 @@ export function createTicket(
   input: {
     title: string;
     description: string;
-    category: IssueCategory;
+    category: string;
     block: HostelBlock;
     room: string;
     priority: Priority;
     reportedBy: string;
     studentId: string;
+    phone?: string;
+    preferredTime?: string;
     photoDataUrl?: string;
   }
 ): MaintenanceTicket[] {
   const now = new Date().toISOString();
+  const cleanCategory = input.category.trim() || 'Other';
   const ticket: MaintenanceTicket = {
     id: nextTicketId(tickets),
     title: input.title.trim(),
     description: input.description.trim(),
-    category: input.category,
+    category: cleanCategory,
     block: input.block,
     room: input.room.trim().toUpperCase(),
     priority: input.priority,
     status: 'Submitted',
     reportedBy: input.reportedBy.trim() || 'Student',
     studentId: input.studentId.trim() || 'STU-000',
+    phone: (input.phone ?? '').trim() || 'Not provided',
+    preferredTime: input.preferredTime || VISIT_SLOTS[0],
     assignedTo: null,
     upvotes: 1,
     photoDataUrl: input.photoDataUrl,
     createdAt: now,
     updatedAt: now,
     timeline: [
-      { at: now, actor: input.reportedBy.trim() || 'Student', note: `Issue reported for Room ${input.room.trim().toUpperCase()}.` },
+      {
+        at: now,
+        actor: input.reportedBy.trim() || 'Student',
+        note: `Reported ${cleanCategory} issue in Room ${input.room.trim().toUpperCase()}.`,
+      },
     ],
   };
   return [ticket, ...tickets];
@@ -229,6 +254,48 @@ export function updateTicketStatus(
   });
 }
 
+export function rateTicket(
+  tickets: MaintenanceTicket[],
+  ticketId: string,
+  rating: number,
+  feedback: string
+): MaintenanceTicket[] {
+  const now = new Date().toISOString();
+  return tickets.map((t) => {
+    if (t.id !== ticketId) return t;
+    return {
+      ...t,
+      rating,
+      feedback: feedback.trim(),
+      updatedAt: now,
+      timeline: [
+        ...t.timeline,
+        {
+          at: now,
+          actor: t.reportedBy,
+          note: `Rated repair ${rating}/5${feedback.trim() ? `: "${feedback.trim()}"` : '.'}`,
+        },
+      ],
+    };
+  });
+}
+
+export function reopenTicket(tickets: MaintenanceTicket[], ticketId: string, reason: string): MaintenanceTicket[] {
+  const now = new Date().toISOString();
+  return tickets.map((t) => {
+    if (t.id !== ticketId) return t;
+    return {
+      ...t,
+      status: 'In Progress',
+      updatedAt: now,
+      timeline: [
+        ...t.timeline,
+        { at: now, actor: t.reportedBy, note: `Reopened issue: ${reason.trim() || 'Problem still persists.'}` },
+      ],
+    };
+  });
+}
+
 export function upvoteTicket(tickets: MaintenanceTicket[], ticketId: string): MaintenanceTicket[] {
   return tickets.map((t) => (t.id === ticketId ? { ...t, upvotes: t.upvotes + 1 } : t));
 }
@@ -245,28 +312,34 @@ export function computeMetrics(tickets: MaintenanceTicket[]) {
     open: tickets.filter((t) => t.block === block && t.status !== 'Resolved').length,
   }));
 
-  const byCategory = CATEGORIES.map((category) => ({
-    category,
-    count: tickets.filter((t) => t.category === category).length,
-  })).sort((a, b) => b.count - a.count);
+  const catMap = new Map<string, number>();
+  for (const t of tickets) {
+    catMap.set(t.category, (catMap.get(t.category) ?? 0) + 1);
+  }
+  const byCategory = Array.from(catMap.entries())
+    .map(([category, count]) => ({ category, count }))
+    .sort((a, b) => b.count - a.count);
 
   return { total: tickets.length, open, urgent, inProgress, resolved, byBlock, byCategory };
 }
 
 export function ticketsToCsv(tickets: MaintenanceTicket[]): string {
-  const header = 'ID,Title,Category,Block,Room,Priority,Status,Reported By,Assigned To,Confirmations,Created At';
+  const header = 'ID,Title,Category,Block,Room,Priority,Status,Reported By,Phone,Preferred Time,Assigned To,Confirmations,Rating,Created At';
   const rows = tickets.map((t) =>
     [
       t.id,
       `"${t.title.replace(/"/g, '""')}"`,
-      t.category,
+      `"${t.category.replace(/"/g, '""')}"`,
       t.block,
       t.room,
       t.priority,
       t.status,
       t.reportedBy,
+      t.phone,
+      `"${t.preferredTime}"`,
       t.assignedTo ?? 'Unassigned',
       t.upvotes,
+      t.rating ?? '',
       t.createdAt,
     ].join(',')
   );

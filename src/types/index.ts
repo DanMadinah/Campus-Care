@@ -1,6 +1,6 @@
 export type UserRole = 'STUDENT' | 'WARDEN' | 'TECHNICIAN';
 
-export type IssueCategory =
+export type PresetCategory =
   | 'Lights & Electrical'
   | 'Plumbing & Taps'
   | 'Fan & AC'
@@ -24,16 +24,20 @@ export interface MaintenanceTicket {
   id: string;
   title: string;
   description: string;
-  category: IssueCategory;
+  category: string;
   block: HostelBlock;
   room: string;
   priority: Priority;
   status: TicketStatus;
   reportedBy: string;
   studentId: string;
+  phone: string;
+  preferredTime: string;
   assignedTo: string | null;
   upvotes: number;
   photoDataUrl?: string;
+  rating?: number;
+  feedback?: string;
   createdAt: string;
   updatedAt: string;
   resolvedAt?: string;
@@ -43,5 +47,5 @@ export interface MaintenanceTicket {
 export interface Technician {
   id: string;
   name: string;
-  specialty: IssueCategory;
+  specialty: string;
 }

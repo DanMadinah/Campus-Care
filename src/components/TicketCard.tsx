@@ -7,6 +7,10 @@ import {
   ChevronDown,
   ChevronUp,
   CheckCircle2,
+  Copy,
+  Star,
+  Phone,
+  RotateCcw,
 } from 'lucide-react';
 import { STATUS_ORDER, TECHNICIANS } from '../data/store';
 import { MaintenanceTicket, Priority, TicketStatus, UserRole } from '../types';
@@ -17,20 +21,23 @@ interface TicketCardProps {
   onUpvote: (id: string) => void;
   onAssign: (id: string, technician: string) => void;
   onUpdateStatus: (id: string, status: TicketStatus, note: string) => void;
+  onRate: (id: string, rating: number, feedback: string) => void;
+  onReopen: (id: string, reason: string) => void;
+  onCopyId: (id: string) => void;
 }
 
 const PRIORITY_BADGE: Record<Priority, string> = {
-  Urgent: 'bg-rose-500/15 text-rose-300 border-rose-500/30',
-  High: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
-  Medium: 'bg-sky-500/15 text-sky-300 border-sky-500/30',
-  Low: 'bg-slate-600/25 text-slate-300 border-slate-600/40',
+  Urgent: 'bg-rose-50 text-rose-700 border-rose-200',
+  High: 'bg-amber-50 text-amber-800 border-amber-200',
+  Medium: 'bg-sky-50 text-sky-800 border-sky-200',
+  Low: 'bg-stone-100 text-stone-600 border-stone-200',
 };
 
 const STATUS_BADGE: Record<TicketStatus, string> = {
-  Submitted: 'bg-slate-700/50 text-slate-200 border-slate-600',
-  Assigned: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30',
-  'In Progress': 'bg-amber-500/15 text-amber-300 border-amber-500/30',
-  Resolved: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+  Submitted: 'bg-stone-100 text-stone-700 border-stone-200',
+  Assigned: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+  'In Progress': 'bg-amber-50 text-amber-800 border-amber-200',
+  Resolved: 'bg-emerald-50 text-emerald-800 border-emerald-200',
 };
 
 export function TicketCard({
@@ -39,47 +46,56 @@ export function TicketCard({
   onUpvote,
   onAssign,
   onUpdateStatus,
+  onRate,
+  onReopen,
+  onCopyId,
 }: TicketCardProps) {
   const [showTimeline, setShowTimeline] = useState(false);
   const [repairNote, setRepairNote] = useState('');
   const [nextStatus, setNextStatus] = useState<TicketStatus>(
-    ticket.status === 'Submitted'
-      ? 'In Progress'
-      : ticket.status === 'Assigned'
-      ? 'In Progress'
-      : 'Resolved'
+    ticket.status === 'In Progress' ? 'Resolved' : 'In Progress'
   );
+  const [stars, setStars] = useState(5);
+  const [feedback, setFeedback] = useState('');
+  const [showReopen, setShowReopen] = useState(false);
+  const [reopenReason, setReopenReason] = useState('');
 
   const stepIndex = STATUS_ORDER.indexOf(ticket.status);
 
   return (
-    <div className="rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-slate-700 transition p-4 sm:p-5 space-y-4">
-      {/* Top Meta Row */}
+    <article className="rounded-2xl bg-white border border-[#E5E3DC] shadow-[0_2px_10px_rgba(19,34,56,0.04)] hover:border-[#CFCBC0] transition p-5 space-y-4">
+      {/* Header Row */}
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-1">
+        <div className="space-y-1.5">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-mono text-slate-400">{ticket.id}</span>
+            <button
+              onClick={() => onCopyId(ticket.id)}
+              title="Copy reference number"
+              className="inline-flex items-center gap-1 text-xs font-bold font-mono text-[#132238] bg-[#F3F1EA] hover:bg-[#E8E4D8] px-2 py-0.5 rounded-md"
+            >
+              {ticket.id} <Copy className="w-3 h-3 text-[#64748B]" />
+            </button>
             <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full border ${STATUS_BADGE[ticket.status]}`}>
               {ticket.status}
             </span>
             <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full border ${PRIORITY_BADGE[ticket.priority]}`}>
               {ticket.priority}
             </span>
-            <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300">
+            <span className="text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-[#FDF6F0] text-[#9A3412] border border-[#F5D0BE]">
               {ticket.category}
             </span>
           </div>
-          <h3 className="text-base font-semibold text-white">{ticket.title}</h3>
-          <p className="text-sm text-slate-400">{ticket.description}</p>
+          <h3 className="text-base font-bold text-[#132238]">{ticket.title}</h3>
+          <p className="text-sm text-[#475569] leading-relaxed">{ticket.description}</p>
         </div>
 
-        {role === 'STUDENT' && (
+        {role === 'STUDENT' && ticket.status !== 'Resolved' && (
           <button
             onClick={() => onUpvote(ticket.id)}
             title="Confirm this issue also affects you"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-700 hover:border-emerald-500 text-xs font-medium text-slate-200"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#FAF9F6] border border-[#D8D5CC] hover:border-[#D95D39] text-xs font-semibold text-[#132238]"
           >
-            <ThumbsUp className="w-3.5 h-3.5 text-emerald-400" />
+            <ThumbsUp className="w-3.5 h-3.5 text-[#D95D39]" />
             Same issue ({ticket.upvotes})
           </button>
         )}
@@ -89,27 +105,27 @@ export function TicketCard({
         <img
           src={ticket.photoDataUrl}
           alt={ticket.title}
-          className="h-36 w-full sm:w-64 object-cover rounded-xl border border-slate-800"
+          className="h-36 w-full sm:w-64 object-cover rounded-xl border border-[#E5E3DC]"
         />
       )}
 
-      {/* 4-Step Visual Progress Tracker */}
+      {/* 4-Step Progress Bar */}
       <div className="grid grid-cols-4 gap-2 pt-1">
         {STATUS_ORDER.map((step, idx) => {
           const done = idx <= stepIndex;
           return (
-            <div key={step} className="space-y-1">
+            <div key={step} className="space-y-1.5">
               <div
-                className={`h-1.5 rounded-full transition-all ${
+                className={`h-2 rounded-full transition-all ${
                   done
                     ? ticket.status === 'Resolved'
-                      ? 'bg-emerald-400'
-                      : 'bg-sky-400'
-                    : 'bg-slate-800'
+                      ? 'bg-[#1B6B5A]'
+                      : 'bg-[#D95D39]'
+                    : 'bg-[#ECEAE2]'
                 }`}
               />
-              <div className={`text-[11px] flex items-center gap-1 ${done ? 'text-slate-200 font-medium' : 'text-slate-500'}`}>
-                {done && idx === 3 && <CheckCircle2 className="w-3 h-3 text-emerald-400" />}
+              <div className={`text-[11px] flex items-center gap-1 ${done ? 'text-[#132238] font-semibold' : 'text-[#94A3B8]'}`}>
+                {done && idx === 3 && <CheckCircle2 className="w-3.5 h-3.5 text-[#1B6B5A]" />}
                 {step}
               </div>
             </div>
@@ -117,44 +133,128 @@ export function TicketCard({
         })}
       </div>
 
-      {/* Location, Reporter, Technician */}
-      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400 pt-2 border-t border-slate-800/80">
-        <div className="flex flex-wrap items-center gap-4">
-          <span className="inline-flex items-center gap-1 text-slate-300">
-            <MapPin className="w-3.5 h-3.5 text-emerald-400" />
+      {/* Metadata Row */}
+      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-[#64748B] pt-3 border-t border-[#F0EFEA]">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+          <span className="inline-flex items-center gap-1 font-semibold text-[#132238]">
+            <MapPin className="w-3.5 h-3.5 text-[#D95D39]" />
             {ticket.block} · Room {ticket.room}
           </span>
           <span className="inline-flex items-center gap-1">
-            <Wrench className="w-3.5 h-3.5 text-sky-400" />
-            {ticket.assignedTo ? ticket.assignedTo : 'Unassigned'}
+            <Wrench className="w-3.5 h-3.5 text-[#1B6B5A]" />
+            {ticket.assignedTo ? ticket.assignedTo : 'Waiting for assignment'}
           </span>
           <span className="inline-flex items-center gap-1">
             <Clock className="w-3.5 h-3.5" />
-            Reported by {ticket.reportedBy}
+            {ticket.preferredTime}
           </span>
+          {role !== 'STUDENT' && (
+            <span className="inline-flex items-center gap-1">
+              <Phone className="w-3.5 h-3.5" />
+              {ticket.reportedBy} ({ticket.phone})
+            </span>
+          )}
         </div>
 
         <button
           onClick={() => setShowTimeline((v) => !v)}
-          className="inline-flex items-center gap-1 text-sky-400 hover:text-sky-300 font-medium"
+          className="inline-flex items-center gap-1 text-[#132238] hover:text-[#D95D39] font-semibold"
         >
-          Updates ({ticket.timeline.length})
+          History ({ticket.timeline.length})
           {showTimeline ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
         </button>
       </div>
 
-      {/* Warden Controls */}
+      {/* Student Rating / Reopen when Resolved */}
+      {role === 'STUDENT' && ticket.status === 'Resolved' && (
+        <div className="pt-3 border-t border-[#F0EFEA]">
+          {ticket.rating ? (
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs bg-[#F2F8F6] border border-[#CDE6DF] rounded-xl px-3.5 py-2.5 text-[#1B6B5A]">
+              <span className="font-semibold">
+                Your rating: {'★'.repeat(ticket.rating)}{'☆'.repeat(5 - ticket.rating)} ({ticket.rating}/5)
+                {ticket.feedback ? ` — "${ticket.feedback}"` : ''}
+              </span>
+              <button
+                onClick={() => setShowReopen((v) => !v)}
+                className="inline-flex items-center gap-1 text-[#9A3412] hover:underline font-semibold"
+              >
+                <RotateCcw className="w-3 h-3" /> Still not fixed?
+              </button>
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2 bg-[#FAF9F6] border border-[#E5E3DC] rounded-xl p-3">
+              <span className="text-xs font-semibold text-[#132238]">Rate this repair:</span>
+              <div className="flex items-center gap-0.5">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setStars(n)}
+                    className={`p-0.5 ${n <= stars ? 'text-amber-500' : 'text-stone-300'}`}
+                  >
+                    <Star className="w-4 h-4 fill-current" />
+                  </button>
+                ))}
+              </div>
+              <input
+                value={feedback}
+                onChange={(e) => setFeedback(e.target.value)}
+                placeholder="Optional note (e.g. works well now)"
+                className="flex-1 min-w-[160px] bg-white border border-[#D8D5CC] rounded-lg px-2.5 py-1.5 text-xs text-[#132238]"
+              />
+              <button
+                onClick={() => {
+                  onRate(ticket.id, stars, feedback);
+                  setFeedback('');
+                }}
+                className="px-3 py-1.5 rounded-lg bg-[#1B6B5A] hover:bg-[#145446] text-xs font-semibold text-white"
+              >
+                Submit Rating
+              </button>
+              <button
+                onClick={() => setShowReopen((v) => !v)}
+                className="px-2.5 py-1.5 rounded-lg border border-[#D8D5CC] text-xs font-medium text-[#9A3412] hover:bg-rose-50"
+              >
+                Reopen
+              </button>
+            </div>
+          )}
+
+          {showReopen && (
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <input
+                value={reopenReason}
+                onChange={(e) => setReopenReason(e.target.value)}
+                placeholder="Explain why it still needs attention..."
+                className="flex-1 min-w-[200px] bg-[#FAF9F6] border border-[#D8D5CC] rounded-lg px-3 py-1.5 text-xs text-[#132238]"
+              />
+              <button
+                onClick={() => {
+                  onReopen(ticket.id, reopenReason);
+                  setReopenReason('');
+                  setShowReopen(false);
+                }}
+                className="px-3 py-1.5 rounded-lg bg-[#D95D39] text-white text-xs font-semibold"
+              >
+                Confirm Reopen
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Warden Assignment Controls */}
       {role === 'WARDEN' && ticket.status !== 'Resolved' && (
-        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-800/80">
-          <span className="text-xs text-slate-400">Assign technician:</span>
+        <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-[#F0EFEA]">
+          <span className="text-xs font-semibold text-[#132238]">Assign staff:</span>
           <select
             value={ticket.assignedTo ?? ''}
             onChange={(e) => {
               if (e.target.value) onAssign(ticket.id, e.target.value);
             }}
-            className="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-100"
+            className="bg-[#FAF9F6] border border-[#D8D5CC] rounded-lg px-3 py-1.5 text-xs font-medium text-[#132238]"
           >
-            <option value="">Select staff...</option>
+            <option value="">Choose technician...</option>
             {TECHNICIANS.map((tech) => (
               <option key={tech.id} value={tech.name}>
                 {tech.name} ({tech.specialty})
@@ -164,13 +264,13 @@ export function TicketCard({
         </div>
       )}
 
-      {/* Technician Controls */}
+      {/* Technician Status Controls */}
       {role === 'TECHNICIAN' && ticket.status !== 'Resolved' && (
-        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-800/80">
+        <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-[#F0EFEA]">
           <select
             value={nextStatus}
             onChange={(e) => setNextStatus(e.target.value as TicketStatus)}
-            className="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-100"
+            className="bg-[#FAF9F6] border border-[#D8D5CC] rounded-lg px-2.5 py-1.5 text-xs font-semibold text-[#132238]"
           >
             <option value="In Progress">In Progress</option>
             <option value="Resolved">Resolved</option>
@@ -178,35 +278,35 @@ export function TicketCard({
           <input
             value={repairNote}
             onChange={(e) => setRepairNote(e.target.value)}
-            placeholder="Add repair note (e.g. replaced tap washer)..."
-            className="flex-1 min-w-[200px] bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white"
+            placeholder="Write what was checked or replaced..."
+            className="flex-1 min-w-[200px] bg-[#FAF9F6] border border-[#D8D5CC] rounded-lg px-3 py-1.5 text-xs text-[#132238]"
           />
           <button
             onClick={() => {
               onUpdateStatus(ticket.id, nextStatus, repairNote);
               setRepairNote('');
             }}
-            className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white"
+            className="px-3.5 py-1.5 rounded-lg bg-[#1B6B5A] hover:bg-[#145446] text-xs font-semibold text-white"
           >
             Save Update
           </button>
         </div>
       )}
 
-      {/* Maintenance Timeline */}
+      {/* Timeline */}
       {showTimeline && (
-        <div className="pt-2 border-t border-slate-800/80 space-y-2">
+        <div className="pt-3 border-t border-[#F0EFEA] space-y-2">
           {ticket.timeline.map((item, i) => (
-            <div key={i} className="text-xs flex flex-wrap justify-between gap-2 bg-slate-950/70 px-3 py-2 rounded-lg">
+            <div key={i} className="text-xs flex flex-wrap justify-between gap-2 bg-[#FAF9F6] border border-[#ECEAE2] px-3 py-2 rounded-lg">
               <div>
-                <span className="font-semibold text-slate-200">{item.actor}:</span>{' '}
-                <span className="text-slate-300">{item.note}</span>
+                <span className="font-bold text-[#132238]">{item.actor}:</span>{' '}
+                <span className="text-[#475569]">{item.note}</span>
               </div>
-              <span className="text-slate-500 font-mono">{new Date(item.at).toLocaleString()}</span>
+              <span className="text-[#94A3B8] font-mono">{new Date(item.at).toLocaleString()}</span>
             </div>
           ))}
         </div>
       )}
-    </div>
+    </article>
   );
 }
