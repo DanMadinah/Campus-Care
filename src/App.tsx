@@ -5,12 +5,10 @@ import {
   Download,
   RotateCcw,
   Search,
-  UserCheck,
-  Wrench,
-  GraduationCap,
   Sun,
   Moon,
   Bell,
+  LogOut,
 } from 'lucide-react';
 import {
   BLOCKS,
@@ -32,6 +30,7 @@ import { ReportModal } from './components/ReportModal';
 import { TicketCard } from './components/TicketCard';
 import { AdminAnalytics } from './components/AdminAnalytics';
 import { MaintenanceBackdrop } from './components/MaintenanceBackdrop';
+import { LoginScreen, SessionUser } from './components/LoginScreen';
 
 interface NotificationItem {
   id: string;
@@ -41,15 +40,17 @@ interface NotificationItem {
   read: boolean;
 }
 
-const ROLE_META: Array<{ id: UserRole; label: string; icon: typeof GraduationCap }> = [
-  { id: 'STUDENT', label: 'Student', icon: GraduationCap },
-  { id: 'WARDEN', label: 'Warden', icon: UserCheck },
-  { id: 'TECHNICIAN', label: 'Technician', icon: Wrench },
-];
-
 export default function App() {
+  const [session, setSession] = useState<SessionUser | null>(() => {
+    try {
+      const raw = sessionStorage.getItem('campuscare_session');
+      return raw ? (JSON.parse(raw) as SessionUser) : null;
+    } catch {
+      return null;
+    }
+  });
   const [tickets, setTickets] = useState<MaintenanceTicket[]>(() => loadTickets());
-  const [role, setRole] = useState<UserRole>('STUDENT');
+  const role: UserRole = session?.role ?? 'STUDENT';
   const [search, setSearch] = useState('');
   const [blockFilter, setBlockFilter] = useState<string>('ALL');
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
@@ -199,6 +200,30 @@ export default function App() {
     notify('Sample hostel records restored');
   };
 
+  const handleLogin = (user: SessionUser) => {
+    setSession(user);
+    try {
+      sessionStorage.setItem('campuscare_session', JSON.stringify(user));
+    } catch {
+      // ignore
+    }
+    notify(`Signed in as ${user.name} (${user.role.toLowerCase()})`);
+  };
+
+  const handleLogout = () => {
+    setSession(null);
+    setShowNotifs(false);
+    try {
+      sessionStorage.removeItem('campuscare_session');
+    } catch {
+      // ignore
+    }
+  };
+
+  if (!session) {
+    return <LoginScreen onLogin={handleLogin} />;
+  }
+
   return (
     <div className="min-h-screen bg-[#F6F5F1] dark:bg-[#0E1624] text-[#132238] dark:text-slate-100 relative overflow-x-hidden transition-colors">
       <MaintenanceBackdrop />
@@ -217,23 +242,12 @@ export default function App() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
-            <div className="inline-flex rounded-xl bg-[#1D314F] p-1 border border-white/10">
-              {ROLE_META.map((r) => {
-                const Icon = r.icon;
-                const active = role === r.id;
-                return (
-                  <button
-                    key={r.id}
-                    onClick={() => setRole(r.id)}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                      active ? 'bg-white text-[#132238] shadow-sm' : 'text-slate-300 hover:text-white'
-                    }`}
-                  >
-                    <Icon className="w-3.5 h-3.5" />
-                    {r.label}
-                  </button>
-                );
-              })}
+            {/* Signed-in User Pill */}
+            <div className="inline-flex items-center gap-2 rounded-xl bg-[#1D314F] px-3 py-1.5 border border-white/10 text-xs">
+              <span className="font-semibold text-white">{session.name}</span>
+              <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#D95D39]/90 text-white font-bold">
+                {session.role}
+              </span>
             </div>
 
             {role === 'STUDENT' && (
@@ -317,6 +331,15 @@ export default function App() {
               className="p-2 rounded-xl bg-[#1D314F] text-slate-300 hover:text-white border border-white/10"
             >
               <RotateCcw className="w-4 h-4" />
+            </button>
+
+            <button
+              onClick={handleLogout}
+              title="Sign out"
+              className="inline-flex items-center gap-1.5 px-2.5 py-2 rounded-xl bg-[#1D314F] text-slate-200 hover:text-white border border-white/10 text-xs font-semibold"
+            >
+              <LogOut className="w-4 h-4" />
+              <span className="hidden sm:inline">Sign out</span>
             </button>
           </div>
         </div>
@@ -447,7 +470,7 @@ export default function App() {
       </main>
 
       {showReportModal && (
-        <ReportModal onClose={() => setShowReportModal(false)} onSubmit={handleCreate} />
+        <ReportModal defaultName={session.name} onClose={() => setShowReportModal(false)} onSubmit={handleCreate} />
       )}
 
       {toast && (

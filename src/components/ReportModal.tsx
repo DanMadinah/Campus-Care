@@ -4,6 +4,7 @@ import { BLOCKS, CATEGORIES, PRIORITIES, VISIT_SLOTS } from '../data/store';
 import { HostelBlock, PresetCategory, Priority } from '../types';
 
 interface ReportModalProps {
+  defaultName?: string;
   onClose: () => void;
   onSubmit: (input: {
     title: string;
@@ -20,7 +21,7 @@ interface ReportModalProps {
   }) => void;
 }
 
-export function ReportModal({ onClose, onSubmit }: ReportModalProps) {
+export function ReportModal({ defaultName, onClose, onSubmit }: ReportModalProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<PresetCategory>('Lights & Electrical');
@@ -28,7 +29,7 @@ export function ReportModal({ onClose, onSubmit }: ReportModalProps) {
   const [block, setBlock] = useState<HostelBlock>('Block A');
   const [room, setRoom] = useState('A-204');
   const [priority, setPriority] = useState<Priority>('Medium');
-  const [reportedBy, setReportedBy] = useState('Muhammad Bukar');
+  const [reportedBy, setReportedBy] = useState(defaultName || 'Muhammad Bukar');
   const [studentId, setStudentId] = useState('STU-2026-014');
   const [phone, setPhone] = useState('011-2345-6789');
   const [preferredTime, setPreferredTime] = useState(VISIT_SLOTS[0]);
