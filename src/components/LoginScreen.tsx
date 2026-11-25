@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Home, Mail, User, Lock, GraduationCap, UserCheck, Wrench, AlertCircle } from 'lucide-react';
+import { Home, Mail, User, Lock, GraduationCap, UserCheck, Wrench, AlertCircle, IdCard } from 'lucide-react';
 import { UserRole } from '../types';
 import { MaintenanceBackdrop } from './MaintenanceBackdrop';
 
@@ -7,6 +7,7 @@ export interface SessionUser {
   name: string;
   email: string;
   role: UserRole;
+  matricNumber?: string;
 }
 
 interface LoginScreenProps {
@@ -28,6 +29,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
   const [role, setRole] = useState<UserRole>('STUDENT');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [matricNumber, setMatricNumber] = useState('');
   const [staffCode, setStaffCode] = useState('');
   const [error, setError] = useState('');
 
@@ -35,6 +37,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
     e.preventDefault();
     const cleanEmail = email.trim().toLowerCase();
     const cleanName = name.trim();
+    const cleanMatric = matricNumber.trim().toUpperCase();
 
     if (!cleanName || cleanName.length < 2) {
       setError('Please enter your full name.');
@@ -44,6 +47,10 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
       setError('Please enter a valid email address.');
       return;
     }
+    if (role === 'STUDENT' && cleanMatric.length < 3) {
+      setError('Please enter your matric number.');
+      return;
+    }
     if (role !== 'STUDENT') {
       if (staffCode.trim() !== STAFF_CODES[role]) {
         setError(`Invalid ${role === 'WARDEN' ? 'Warden' : 'Technician'} access code.`);
@@ -51,7 +58,12 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
       }
     }
 
-    onLogin({ name: cleanName, email: cleanEmail, role });
+    onLogin({
+      name: cleanName,
+      email: cleanEmail,
+      role,
+      matricNumber: role === 'STUDENT' ? cleanMatric : undefined,
+    });
   };
 
   return (
@@ -150,6 +162,27 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
               />
             </div>
           </div>
+
+          {role === 'STUDENT' && (
+            <div>
+              <label className="block text-xs font-semibold text-[#132238] dark:text-slate-200 mb-1">
+                Matric Number
+              </label>
+              <div className="relative">
+                <IdCard className="w-4 h-4 text-[#94A3B8] absolute left-3 top-2.5" />
+                <input
+                  required
+                  value={matricNumber}
+                  onChange={(e) => {
+                    setMatricNumber(e.target.value);
+                    setError('');
+                  }}
+                  placeholder="e.g. 2024012345"
+                  className="w-full bg-[#FAF9F6] dark:bg-[#0E1624] border border-[#D8D5CC] dark:border-[#26354D] rounded-xl pl-9 pr-3 py-2.5 text-sm text-[#132238] dark:text-white uppercase focus:outline-none focus:border-[#D95D39]"
+                />
+              </div>
+            </div>
+          )}
 
           {role !== 'STUDENT' && (
             <div>

@@ -275,6 +275,9 @@ export default function App() {
             {/* Signed-in User Pill */}
             <div className="inline-flex items-center gap-2 rounded-xl bg-[#1D314F] px-3 py-1.5 border border-white/10 text-xs">
               <span className="font-semibold text-white">{session.name}</span>
+              {session.matricNumber && (
+                <span className="font-mono text-[11px] text-slate-300">({session.matricNumber})</span>
+              )}
               <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#D95D39]/90 text-white font-bold">
                 {session.role}
               </span>
@@ -531,7 +534,12 @@ export default function App() {
       </main>
 
       {showReportModal && (
-        <ReportModal defaultName={session.name} onClose={() => setShowReportModal(false)} onSubmit={handleCreate} />
+        <ReportModal
+          defaultName={session.name}
+          defaultMatric={session.matricNumber}
+          onClose={() => setShowReportModal(false)}
+          onSubmit={handleCreate}
+        />
       )}
 
       {toast && (

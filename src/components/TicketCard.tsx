@@ -155,7 +155,7 @@ export function TicketCard({
           {role !== 'STUDENT' && (
             <span className="inline-flex items-center gap-1">
               <Phone className="w-3.5 h-3.5" />
-              {ticket.reportedBy} ({ticket.phone})
+              {ticket.reportedBy} [{ticket.studentId}] ({ticket.phone})
             </span>
           )}
         </div>
